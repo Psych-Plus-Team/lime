@@ -611,12 +611,13 @@ class AndroidPlatform extends PlatformTarget
 			}
 			for (i in 0...iconTypes.length)
 			{
-				// create multiple icons, only set "android:icon" once
-				if (IconHelper.createIcon(icons, iconSizes[i], iconSizes[i], sourceSet + "/res/drawable-" + iconTypes[i] + "/icon.png")
+				// create multiple icons in mipmap folders for adaptive icon support
+				if (IconHelper.createIcon(icons, iconSizes[i], iconSizes[i], sourceSet + "/res/mipmap-" + iconTypes[i] + "/ic_launcher.png")
 					&& !context.HAS_ICON)
 				{
 					context.HAS_ICON = true;
-					context.ANDROID_APPLICATION.push({ key: "android:icon", value: "@drawable/icon" });
+					context.ANDROID_APPLICATION.push({ key: "android:icon", value: "@mipmap/ic_launcher" });
+					context.ANDROID_APPLICATION.push({ key: "android:roundIcon", value: "@mipmap/ic_launcher" });
 				}
 			}
 
