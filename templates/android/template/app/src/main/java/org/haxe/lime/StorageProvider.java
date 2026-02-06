@@ -71,7 +71,7 @@ public class StorageProvider extends DocumentsProvider {
         row.add(Root.COLUMN_FLAGS, Root.FLAG_SUPPORTS_CREATE | Root.FLAG_SUPPORTS_SEARCH | Root.FLAG_SUPPORTS_IS_CHILD);
         row.add(Root.COLUMN_TITLE, applicationName);
         row.add(Root.COLUMN_MIME_TYPES, ALL_MIME_TYPES);
-        row.add(Root.COLUMN_ICON, R.drawable.icon);
+        row.add(Root.COLUMN_ICON, 0);
         return result;
     }
 
@@ -249,7 +249,7 @@ public class StorageProvider extends DocumentsProvider {
         row.add(Document.COLUMN_MIME_TYPE, mimeType);
         row.add(Document.COLUMN_LAST_MODIFIED, file.lastModified());
         row.add(Document.COLUMN_FLAGS, flags);
-        row.add(Document.COLUMN_ICON, R.drawable.icon);
+        row.add(Document.COLUMN_ICON, 0);
     }
 
 }
