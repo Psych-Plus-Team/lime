@@ -1,5 +1,6 @@
 package org.haxe.lime;
 
+import android.app.ActivityManager;
 import android.content.Context;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
@@ -644,6 +645,28 @@ public class GameActivity extends SDLActivity {
 			}
 
 		}
+
+	}
+
+
+	public static long getTotalMemory () {
+
+		android.app.ActivityManager activityManager = (android.app.ActivityManager) Extension.mainContext.getSystemService(Context.ACTIVITY_SERVICE);
+		android.app.ActivityManager.MemoryInfo memoryInfo = new android.app.ActivityManager.MemoryInfo();
+		activityManager.getMemoryInfo(memoryInfo);
+		
+		return memoryInfo.totalMem;
+
+	}
+
+
+	public static long getAvailableMemory () {
+
+		android.app.ActivityManager activityManager = (android.app.ActivityManager) Extension.mainContext.getSystemService(Context.ACTIVITY_SERVICE);
+		android.app.ActivityManager.MemoryInfo memoryInfo = new android.app.ActivityManager.MemoryInfo();
+		activityManager.getMemoryInfo(memoryInfo);
+		
+		return memoryInfo.availMem;
 
 	}
 
