@@ -49,6 +49,16 @@
 
 		::if (SHARE_FILES)::
 		<provider
+			android:name="androidx.core.content.FileProvider"
+			android:authorities="::APP_PACKAGE::.contentprovider"
+			android:exported="true"
+			android:grantUriPermissions="true">
+			<meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/provider_paths" />
+		</provider>
+		::end::
+
+		::if (SHARE_FILES)::
+		<provider
     		android:name="org.haxe.lime.StorageProvider"
     		android:authorities="::APP_PACKAGE::.documentsprovider"
     		android:exported="true"
