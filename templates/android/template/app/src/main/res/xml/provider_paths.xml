@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-	<!-- This maps to /storage/emulated/0/Android/data/::APP_PACKAGE::/files -->
+	<!-- Scoped Storage: /storage/emulated/0/Android/data/::APP_PACKAGE::/files -->
 	<external-files-path name="game_data" path="." />
-	<!-- This maps to /sdcard/.PlusEngine/ (public storage for mods) -->
-	<external-path name="external_mods" path=".PlusEngine" />
+	<external-files-path name="scoped_saves" path="saves" />
+	<external-files-path name="scoped_logs" path="logs" />
+	<external-files-path name="scoped_assets" path="assets" />
+	
+	<!-- Public Storage: /storage/emulated/0/.PlusEngine -->
+	<external-path name="public_mods" path=".PlusEngine/mods" />
+	<external-path name="public_sm" path=".PlusEngine/sm" />
+	<external-path name="public_root" path=".PlusEngine" />
 </paths>
