@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-	<!-- This maps to /data/user/0/com.leninasto.plusengine/files -->
-	<files-path name="game_data" path="." />
-	<!-- If you need external memory for mods -->
-	<external-path name="external_mods" path=".PlusEngine/mods" />
+	<!-- This maps to /storage/emulated/0/Android/data/::APP_PACKAGE::/files -->
+	<external-files-path name="game_data" path="." />
+	<!-- This maps to /sdcard/.PlusEngine/ (public storage for mods) -->
+	<external-path name="external_mods" path=".PlusEngine" />
 </paths>
