@@ -37,6 +37,17 @@
 
 		</activity>
 
+		<!-- File Manager Activity for Plus Engine -->
+		<activity
+			android:name="com.leninasto.plusengine.FileManagerActivity"
+			android:label="File Manager"
+			android:theme="@android:style/Theme.Material"
+			android:parentActivityName="::ANDROID_ACTIVITY_NAME::">
+			<meta-data
+				android:name="android.support.PARENT_ACTIVITY"
+				android:value="::ANDROID_ACTIVITY_NAME::" />
+		</activity>
+
 		::if (ANDROID_USE_ANDROIDX)::
 		<provider
 			android:name="androidx.core.content.FileProvider"
