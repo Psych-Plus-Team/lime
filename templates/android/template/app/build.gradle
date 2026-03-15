@@ -4,6 +4,7 @@ import java.awt.GridBagConstraints
 import javax.swing.border.EmptyBorder
 
 apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
 
 System.setProperty('java.awt.headless','false')
 
@@ -80,6 +81,15 @@ android {
         buildConfig = true
 	}
 
+	compileOptions {
+		sourceCompatibility JavaVersion.VERSION_1_8
+		targetCompatibility JavaVersion.VERSION_1_8
+	}
+
+	kotlinOptions {
+		jvmTarget = '1.8'
+	}
+
 	android.applicationVariants.all { variant ->
 		variant.outputs.all { output ->
 			if (outputFileName != null && outputFileName.endsWith('.apk')) {
@@ -95,6 +105,7 @@ dependencies {
 	implementation "androidx.documentfile:documentfile:1.0.1"
 	implementation "com.google.android.material:material:1.12.0"
 	::end::
+	implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.25"
 	implementation fileTree(dir: 'libs', include: ['*.jar'])
 	::if (ANDROID_LIBRARY_PROJECTS)::::foreach (ANDROID_LIBRARY_PROJECTS)::implementation project(':deps:::name::')
 	::end::::end::

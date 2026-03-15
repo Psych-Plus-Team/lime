@@ -41,7 +41,7 @@
 		<activity
 			android:name="com.leninasto.plusengine.FileManagerActivity"
 			android:label="File Manager"
-			android:theme="@android:style/Theme.Material"
+			android:theme="@style/Theme.Material3.DayNight.NoActionBar"
 			android:parentActivityName="::ANDROID_ACTIVITY_NAME::">
 			<meta-data
 				android:name="android.support.PARENT_ACTIVITY"
