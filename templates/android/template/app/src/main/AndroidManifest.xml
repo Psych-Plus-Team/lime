@@ -13,7 +13,7 @@
 		<meta-data android:name="SDL_ENV.SDL_IOS_ORIENTATIONS" android:value="Portrait PortraitUpsideDown" />
 		::elseif (WIN_ORIENTATION=="landscape")::
 		<meta-data android:name="SDL_ENV.SDL_IOS_ORIENTATIONS" android:value="LandscapeLeft LandscapeRight" />
-		::end::
+		::end::z
 
 		<activity ::foreach ANDROID_ACTIVITY::::if ((value != null) && (value != ""))::::key::="::value::" ::end::::end::>
 
@@ -51,10 +51,12 @@
 		::if (ANDROID_USE_ANDROIDX)::
 		<provider
 			android:name="androidx.core.content.FileProvider"
-			android:authorities="::APP_PACKAGE::.fileprovider"
+			android:authorities="::APP_PACKAGE::.provider"
 			android:exported="false"
 			android:grantUriPermissions="true">
-			<meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
+			<meta-data 
+			android:name="android.support.FILE_PROVIDER_PATHS" 
+			android:resource="@xml/file_paths" />
 		</provider>
 		::end::
 
