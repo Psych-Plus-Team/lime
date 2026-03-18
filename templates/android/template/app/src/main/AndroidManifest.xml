@@ -48,6 +48,12 @@
 				android:value="::ANDROID_ACTIVITY_NAME::" />
 		</activity>
 
+		<activity
+			android:name="com.leninasto.plusengine.NativeCrashActivity"
+			android:label="Crash Report"
+			android:theme="@style/Theme.Material3.DayNight.NoActionBar"
+			android:exported="false" />
+
 		::if (ANDROID_USE_ANDROIDX)::
 		<provider
 			android:name="androidx.core.content.FileProvider"
