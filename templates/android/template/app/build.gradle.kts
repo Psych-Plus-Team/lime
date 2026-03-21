@@ -114,12 +114,12 @@ dependencies {
 	implementation("com.google.android.material:material:1.12.0")
 	
 	// Compose BOM for consistent versions
-	val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
+	val composeBom = platform("androidx.compose:compose-bom:2026.03.00")
 	implementation(composeBom)
 	
 	// Compose Libraries (versions managed by BOM)
 	implementation("androidx.compose.ui:ui")
-	implementation("androidx.compose.material3:material3")
+	implementation("androidx.compose.material3:material3:1.4.0")
 	implementation("androidx.compose.material:material-icons-extended")
 	implementation("androidx.compose.ui:ui-tooling-preview")
 	implementation("androidx.compose.foundation:foundation")
