@@ -5,19 +5,26 @@ buildscript {
 	}
 
 	dependencies {
-		classpath 'com.android.tools.build:gradle:::ANDROID_GRADLE_PLUGIN::'
+		classpath("com.android.tools.build:gradle:::ANDROID_GRADLE_PLUGIN::")
 	}
 }
 
-apply plugin: 'com.android.library'
+plugins {
+	id("com.android.library")
+}
 
 android {
-	namespace 'org.haxe.extension'
-	compileSdkVersion Integer.parseInt(project.ANDROID_BUILD_SDK_VERSION)
-	buildToolsVersion project.ANDROID_BUILD_TOOLS_VERSION
+	namespace = "org.haxe.extension"
+	compileSdk = Integer.parseInt(project.ANDROID_BUILD_SDK_VERSION)
+	buildToolsVersion = project.ANDROID_BUILD_TOOLS_VERSION
 
 	defaultConfig {
-		minSdkVersion Integer.parseInt(project.ANDROID_BUILD_MIN_SDK_VERSION)
-		targetSdkVersion Integer.parseInt(project.ANDROID_BUILD_TARGET_SDK_VERSION)
+		minSdk = Integer.parseInt(project.ANDROID_BUILD_MIN_SDK_VERSION)
+		targetSdk = Integer.parseInt(project.ANDROID_BUILD_TARGET_SDK_VERSION)
+	}
+	
+	compileOptions {
+		sourceCompatibility = JavaVersion.VERSION_17
+		targetCompatibility = JavaVersion.VERSION_17
 	}
 }

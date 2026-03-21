@@ -89,7 +89,12 @@ public class Tools extends Extension
 
 		try
 		{
-			final PackageInfo info = (PackageInfo) mainContext.getPackageManager().getPackageInfo(packageName, PackageManager.GET_PERMISSIONS);
+			final PackageInfo info;
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+				info = mainContext.getPackageManager().getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(PackageManager.GET_PERMISSIONS));
+			} else {
+				info = mainContext.getPackageManager().getPackageInfo(packageName, PackageManager.GET_PERMISSIONS);
+			}
 
 			for (int i = 0; i < info.requestedPermissions.length; i++)
 			{
