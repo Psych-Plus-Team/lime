@@ -340,6 +340,10 @@ class NativeApplication
 				}
 			}
 			#elseif android
+			// NOTE: BACK button handling disabled - let the app handle it manually
+			// This prevents the app from being sent to background automatically
+			// The app will handle BACK button in FlxG.android.justReleased.BACK checks
+			/*
 			if (keyCode == APP_CONTROL_BACK && modifier == KeyModifier.NONE && type == KEY_UP && !window.onKeyUp.canceled)
 			{
 				var mainActivity = JNI.createStaticField("org/haxe/extension/Extension", "mainActivity", "Landroid/app/Activity;");
@@ -347,6 +351,7 @@ class NativeApplication
 
 				moveTaskToBack(mainActivity.get(), true);
 			}
+			*/
 			#end
 		}
 	}
