@@ -1,13 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Content Provider paths configuration
+    Only exposes scoped storage paths (Android/data/<package>/files/)
+    No public storage paths are exposed
+-->
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-	<!-- Scoped Storage: /storage/emulated/0/Android/data/::APP_PACKAGE::/files -->
-	<external-files-path name="game_data" path="." />
-	<external-files-path name="scoped_saves" path="saves" />
-	<external-files-path name="scoped_logs" path="logs" />
-	<external-files-path name="scoped_assets" path="assets" />
-	
-	<!-- Public Storage: /storage/emulated/0/.PlusEngine -->
-	<external-path name="public_mods" path=".PlusEngine/mods" />
-	<external-path name="public_sm" path=".PlusEngine/sm" />
-	<external-path name="public_root" path=".PlusEngine" />
+    <!-- Scoped Storage: /storage/emulated/0/Android/data/::APP_PACKAGE::/files -->
+    
+    <!-- Root of external files directory -->
+    <external-files-path name="game_data" path="." />
+    
+    <!-- Mods folder -->
+    <external-files-path name="mods" path="mods" />
+    
+    <!-- Saves folder -->
+    <external-files-path name="saves" path="saves" />
+    
+    <!-- Logs folder -->
+    <external-files-path name="logs" path="logs" />
+    
+    <!-- Assets folder (if needed for debugging) -->
+    <external-files-path name="assets" path="assets" />
+    
+    <!-- StepMania folder -->
+    <external-files-path name="sm" path="sm" />
 </paths>
