@@ -75,7 +75,11 @@ namespace lime {
 		#endif
 
 		#if !defined(EMSCRIPTEN) && !defined(LIME_SWITCH)
+		#if defined (ANDROID)
+		SDL_SetHint (SDL_HINT_ANDROID_TRAP_BACK_BUTTON, "1");
+		#else
 		SDL_SetHint (SDL_HINT_ANDROID_TRAP_BACK_BUTTON, "0");
+		#endif
 		SDL_SetHint (SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
 		SDL_SetHint (SDL_HINT_MOUSE_TOUCH_EVENTS, "0");
 		SDL_SetHint (SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
