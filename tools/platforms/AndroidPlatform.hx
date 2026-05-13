@@ -25,6 +25,21 @@ class AndroidPlatform extends PlatformTarget
 {
 	private var deviceID:String;
 
+	public override function getCommandStageLabel(command:String):String
+	{
+		return switch (command.toLowerCase())
+		{
+			case "update": "Preparing Android project";
+			case "build": "Building Android native binaries";
+			case "deploy": "Packaging Android output";
+			case "install": "Installing APK via ADB";
+			case "run": "Launching app via ADB";
+			case "trace": "Streaming logcat";
+			case "rebuild": "Rebuilding Android native libraries";
+			default: super.getCommandStageLabel(command);
+		}
+	}
+
 	public function new(command:String, _project:HXProject, targetFlags:Map<String, String>)
 	{
 		super(command, _project, targetFlags);
@@ -211,7 +226,7 @@ class AndroidPlatform extends PlatformTarget
 				ProjectHelper.copyLibrary(project, ndll, "Android", "lib", suffix, path, project.debug, ".so");
 			}
 
-			System.runCommand("", "haxe", haxeParams);
+			runHaxeWithSourceCheck(haxeParams);
 
 			if (noOutput) return;
 
@@ -255,6 +270,183 @@ class AndroidPlatform extends PlatformTarget
 		if (noOutput) return;
 
 		AndroidHelper.build(project, destination);
+	}
+
+	public override function runHaxeWithSourceCheck(args:Array<String>):Void
+	{
+		var hxml:String = null;
+		for (arg in args)
+		{
+			if (arg != null && StringTools.endsWith(arg.toLowerCase(), ".hxml") && FileSystem.exists(arg))
+			{
+				hxml = arg;
+				break;
+			}
+		}
+
+		if (hxml != null)
+		{
+			showHaxeSourceCheck(hxml);
+		}
+
+		System.runCommand("", "haxe", args);
+	}
+
+	public override function showHaxeSourceCheck(hxml:String):Void
+	{
+		var startTime = haxe.Timer.stamp();
+		var classPaths:Array<String> = [];
+		collectHxmlClassPaths(hxml, classPaths, new Map<String, Bool>());
+
+		if (classPaths.length == 0)
+			return;
+
+		var files:Array<String> = [];
+		collectHxFiles(classPaths, files);
+
+		if (files.length == 0)
+			return;
+
+		Log.println("\x1b[36;1m[Stage] Verifying scripts\x1b[0m");
+		Log.println("Checking Haxe source files: " + files.length);
+
+		var supportsAnsi = (Sys.getEnv("ANSICON") != null
+			|| Sys.getEnv("WT_SESSION") != null
+			|| Sys.getEnv("ConEmuANSI") == "ON"
+			|| Sys.getEnv("TERM") == "xterm"
+			|| Sys.getEnv("TERM_PROGRAM") != null);
+
+		var green = supportsAnsi ? "\x1b[32m" : "";
+		var yellow = supportsAnsi ? "\x1b[33m" : "";
+		var red = supportsAnsi ? "\x1b[31m" : "";
+		var reset = supportsAnsi ? "\x1b[0m" : "";
+
+		var width = 20;
+		var total = files.length;
+		var previousLineLength = 0;
+		var liveOutputInitialized = false;
+		for (i in 0...total)
+		{
+			var current = i + 1;
+			var percent = Std.int((current / total) * 100);
+			if (percent > 100) percent = 100;
+
+			var full = Std.int(percent / 5);
+			var rem = percent % 5;
+			var half = rem >= 3 && full < width;
+			var empty = width - full - (half ? 1 : 0);
+
+			var bar = "";
+			for (j in 0...full) bar += green + "#" + reset;
+			if (half) bar += yellow + "=" + reset;
+			for (j in 0...empty) bar += red + "-" + reset;
+
+			var file = files[i].split("\\").join("/");
+			if (file.length > 95)
+			{
+				file = "..." + file.substr(file.length - 92);
+			}
+
+			var flatBar = "";
+			for (j in 0...full) flatBar += "#";
+			if (half) flatBar += "=";
+			for (j in 0...empty) flatBar += "-";
+			var progressLine = "[" + flatBar + "] " + percent + "%";
+			var plainLine = progressLine + " " + file;
+			var displayLine = "[" + bar + "] " + percent + "%";
+
+			if (supportsAnsi)
+			{
+				if (!liveOutputInitialized)
+				{
+					Sys.print("\n\n");
+					liveOutputInitialized = true;
+				}
+				Sys.print("\x1b[2A\r\x1b[2K" + displayLine + "\n\x1b[2K" + file + "\n");
+			}
+			else
+			{
+				var padCount = previousLineLength - plainLine.length;
+				if (padCount < 0) padCount = 0;
+				var pad = "";
+				for (j in 0...padCount) pad += " ";
+				Sys.print("\r" + plainLine + pad);
+				previousLineLength = plainLine.length;
+			}
+		}
+
+		Sys.println("");
+		var elapsed = haxe.Timer.stamp() - startTime;
+		Log.println('Reviewed ' + total + ' scripts in ' + Std.string(Std.int(elapsed * 10) / 10) + 's');
+	}
+
+	public override function collectHxmlClassPaths(hxml:String, out:Array<String>, visited:Map<String, Bool>):Void
+	{
+		var normalized = Path.tryFullPath(hxml);
+		if (visited.exists(normalized) || !FileSystem.exists(normalized))
+			return;
+
+		visited.set(normalized, true);
+		var baseDir = Path.directory(normalized);
+		var lines = ~/\r\n|\r|\n/g.split(File.getContent(normalized));
+
+		for (line in lines)
+		{
+			var l = StringTools.trim(line);
+			if (l == "" || StringTools.startsWith(l, "#"))
+				continue;
+
+			if (StringTools.startsWith(l, "-cp ") || StringTools.startsWith(l, "--class-path "))
+			{
+				var cp = StringTools.trim(l.substr(l.indexOf(" ") + 1));
+				if (cp != "")
+				{
+					if (!Path.isAbsolute(cp)) cp = Path.combine(baseDir, cp);
+					cp = Path.tryFullPath(cp);
+					if (FileSystem.exists(cp) && FileSystem.isDirectory(cp))
+						out.push(cp);
+				}
+			}
+			else if (!StringTools.startsWith(l, "-") && StringTools.endsWith(l.toLowerCase(), ".hxml"))
+			{
+				var nested = l;
+				if (!Path.isAbsolute(nested)) nested = Path.combine(baseDir, nested);
+				collectHxmlClassPaths(nested, out, visited);
+			}
+		}
+	}
+
+	public override function collectHxFiles(classPaths:Array<String>, out:Array<String>):Void
+	{
+		var seen = new Map<String, Bool>();
+		for (cp in classPaths)
+		{
+			collectHxFilesRecursive(cp, out, seen);
+		}
+	}
+
+	public override function collectHxFilesRecursive(dir:String, out:Array<String>, seen:Map<String, Bool>):Void
+	{
+		if (!FileSystem.exists(dir) || !FileSystem.isDirectory(dir))
+			return;
+
+		for (entry in FileSystem.readDirectory(dir))
+		{
+			var full = Path.combine(dir, entry);
+			if (FileSystem.isDirectory(full))
+			{
+				collectHxFilesRecursive(full, out, seen);
+			}
+			else if (StringTools.endsWith(entry.toLowerCase(), ".hx"))
+			{
+				var normalized = Path.tryFullPath(full);
+				if (!seen.exists(normalized))
+				{
+					seen.set(normalized, true);
+					out.push(normalized);
+				}
+			}
+		}
 	}
 
 	public override function clean():Void

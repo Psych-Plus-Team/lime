@@ -32,6 +32,18 @@ import sys.FileSystem;
 
 class TVOSPlatform extends PlatformTarget
 {
+	public override function getCommandStageLabel(command:String):String
+	{
+		return switch (command.toLowerCase())
+		{
+			case "update": "Preparing tvOS project";
+			case "build": "Building tvOS binaries";
+			case "deploy": "Packaging tvOS output";
+			case "run": "Launching app on tvOS";
+			default: super.getCommandStageLabel(command);
+		}
+	}
+
 	public function new(command:String, _project:HXProject, targetFlags:Map<String, String>)
 	{
 		super(command, _project, targetFlags);

@@ -21,6 +21,20 @@ class TizenPlatform extends PlatformTarget
 {
 	private static var uuid:String = null;
 
+	public override function getCommandStageLabel(command:String):String
+	{
+		return switch (command.toLowerCase())
+		{
+			case "update": "Preparing Tizen project";
+			case "build": "Building Tizen package";
+			case "deploy": "Packaging Tizen output";
+			case "install": "Installing Tizen package";
+			case "run": "Launching Tizen app";
+			case "trace": "Streaming Tizen logs";
+			default: super.getCommandStageLabel(command);
+		}
+	}
+
 	public function new(command:String, _project:HXProject, targetFlags:Map<String, String>)
 	{
 		super(command, _project, targetFlags);
@@ -119,7 +133,7 @@ class TizenPlatform extends PlatformTarget
 
 		var hxml = targetDirectory + "/haxe/" + buildType + ".hxml";
 
-		System.runCommand("", "haxe", [hxml, "-D", "tizen"]);
+		runHaxeWithSourceCheck([hxml, "-D", "tizen"]);
 
 		if (noOutput) return;
 

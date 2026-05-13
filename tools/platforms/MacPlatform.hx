@@ -182,7 +182,7 @@ class MacPlatform extends PlatformTarget
 
 		if (targetType == "neko")
 		{
-			System.runCommand("", "haxe", [hxml]);
+			runHaxeWithSourceCheck([hxml]);
 
 			if (noOutput) return;
 
@@ -191,7 +191,7 @@ class MacPlatform extends PlatformTarget
 		}
 		else if (targetType == "hl")
 		{
-			System.runCommand("", "haxe", [hxml]);
+			runHaxeWithSourceCheck([hxml]);
 
 			if (noOutput) return;
 
@@ -215,7 +215,7 @@ class MacPlatform extends PlatformTarget
 		{
 			var libPath = Path.combine(Haxelib.getPath(new Haxelib("lime")), "templates/java/lib/");
 
-			System.runCommand("", "haxe", [hxml, "-java-lib", libPath + "disruptor.jar", "-java-lib", libPath + "lwjgl.jar"]);
+			runHaxeWithSourceCheck([hxml, "-java-lib", libPath + "disruptor.jar", "-java-lib", libPath + "lwjgl.jar"]);
 
 			if (noOutput) return;
 
@@ -227,7 +227,7 @@ class MacPlatform extends PlatformTarget
 		}
 		else if (targetType == "nodejs")
 		{
-			System.runCommand("", "haxe", [hxml]);
+			runHaxeWithSourceCheck([hxml]);
 
 			if (noOutput) return;
 
@@ -236,7 +236,7 @@ class MacPlatform extends PlatformTarget
 		}
 		else if (targetType == "cs")
 		{
-			System.runCommand("", "haxe", [hxml]);
+			runHaxeWithSourceCheck([hxml]);
 
 			if (noOutput) return;
 
@@ -268,7 +268,7 @@ class MacPlatform extends PlatformTarget
 
 			if (!project.targetFlags.exists("static"))
 			{
-				System.runCommand("", "haxe", haxeArgs);
+				runHaxeWithSourceCheck(haxeArgs);
 
 				if (noOutput) return;
 
@@ -278,7 +278,7 @@ class MacPlatform extends PlatformTarget
 			}
 			else
 			{
-				System.runCommand("", "haxe", haxeArgs.concat(["-D", "static_link"]));
+				runHaxeWithSourceCheck(haxeArgs.concat(["-D", "static_link"]));
 
 				if (noOutput) return;
 

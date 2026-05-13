@@ -34,6 +34,18 @@ import sys.FileSystem;
 
 class IOSPlatform extends PlatformTarget
 {
+	public override function getCommandStageLabel(command:String):String
+	{
+		return switch (command.toLowerCase())
+		{
+			case "update": "Preparing iOS project";
+			case "build": "Building iOS binaries";
+			case "deploy": "Packaging iOS output";
+			case "run": "Launching app on iOS";
+			default: super.getCommandStageLabel(command);
+		}
+	}
+
 	public function new(command:String, _project:HXProject, targetFlags:Map<String, String>)
 	{
 		super(command, _project, targetFlags);

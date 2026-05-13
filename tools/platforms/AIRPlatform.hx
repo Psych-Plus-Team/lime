@@ -25,6 +25,20 @@ class AIRPlatform extends FlashPlatform
 	private var targetPlatform:Platform;
 	private var targetPlatformType:PlatformType;
 
+	public override function getCommandStageLabel(command:String):String
+	{
+		return switch (command.toLowerCase())
+		{
+			case "update": "Preparing AIR project";
+			case "build": "Building AIR package";
+			case "deploy": "Packaging AIR output";
+			case "install": "Installing AIR package";
+			case "run": "Launching AIR app";
+			case "trace": "Streaming AIR logs";
+			default: super.getCommandStageLabel(command);
+		}
+	}
+
 	public function new(command:String, _project:HXProject, targetFlags:Map<String, String>)
 	{
 		super(command, _project, targetFlags);

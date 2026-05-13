@@ -30,6 +30,19 @@ class FlashPlatform extends PlatformTarget
 	private var embedded:Bool;
 	private var logLength:Int = 0;
 
+	public override function getCommandStageLabel(command:String):String
+	{
+		return switch (command.toLowerCase())
+		{
+			case "update": "Preparing Flash project";
+			case "build": "Building SWF";
+			case "deploy": "Packaging Flash output";
+			case "run": "Launching Flash target";
+			case "trace": "Streaming Flash logs";
+			default: super.getCommandStageLabel(command);
+		}
+	}
+
 	public function new(command:String, _project:HXProject, targetFlags:Map<String, String>)
 	{
 		super(command, _project, targetFlags);
@@ -100,7 +113,7 @@ class FlashPlatform extends PlatformTarget
 
 	public override function build():Void
 	{
-		System.runCommand("", "haxe", [targetDirectory + "/haxe/" + buildType + ".hxml"]);
+		runHaxeWithSourceCheck([targetDirectory + "/haxe/" + buildType + ".hxml"]);
 	}
 
 	public override function clean():Void

@@ -236,7 +236,7 @@ class WindowsPlatform extends PlatformTarget
 
 			if (project.app.main != null)
 			{
-				System.runCommand("", "haxe", [hxml]);
+				runHaxeWithSourceCheck([hxml]);
 
 				// start by finding visual studio
 				var programFilesX86 = Sys.getEnv("ProgramFiles(x86)");
@@ -327,7 +327,7 @@ class WindowsPlatform extends PlatformTarget
 
 			if (targetType == "neko")
 			{
-				System.runCommand("", "haxe", [hxml]);
+				runHaxeWithSourceCheck([hxml]);
 
 				if (noOutput) return;
 
@@ -343,7 +343,7 @@ class WindowsPlatform extends PlatformTarget
 			}
 			else if (targetType == "hl")
 			{
-				System.runCommand("", "haxe", [hxml]);
+				runHaxeWithSourceCheck([hxml]);
 
 				if (noOutput) return;
 
@@ -359,7 +359,7 @@ class WindowsPlatform extends PlatformTarget
 			}
 			else if (targetType == "cppia")
 			{
-				System.runCommand("", "haxe", [hxml]);
+				runHaxeWithSourceCheck([hxml]);
 
 				if (noOutput) return;
 
@@ -376,7 +376,7 @@ class WindowsPlatform extends PlatformTarget
 			}
 			else if (targetType == "nodejs")
 			{
-				System.runCommand("", "haxe", [hxml]);
+				runHaxeWithSourceCheck([hxml]);
 
 				if (noOutput) return;
 
@@ -385,7 +385,7 @@ class WindowsPlatform extends PlatformTarget
 			}
 			else if (targetType == "cs")
 			{
-				System.runCommand("", "haxe", [hxml]);
+				runHaxeWithSourceCheck([hxml]);
 
 				if (noOutput) return;
 
@@ -399,7 +399,7 @@ class WindowsPlatform extends PlatformTarget
 			{
 				var libPath = Path.combine(Haxelib.getPath(new Haxelib("lime")), "templates/java/lib/");
 
-				System.runCommand("", "haxe", [hxml, "-java-lib", libPath + "disruptor.jar", "-java-lib", libPath + "lwjgl.jar"]);
+				runHaxeWithSourceCheck([hxml, "-java-lib", libPath + "disruptor.jar", "-java-lib", libPath + "lwjgl.jar"]);
 				// System.runCommand ("", "haxe", [ hxml ]);
 
 				if (noOutput) return;
@@ -451,7 +451,7 @@ class WindowsPlatform extends PlatformTarget
 
 				if (!project.targetFlags.exists("static"))
 				{
-					System.runCommand("", "haxe", haxeArgs);
+					runHaxeWithSourceCheck(haxeArgs);
 
 					if (noOutput) return;
 
@@ -461,7 +461,7 @@ class WindowsPlatform extends PlatformTarget
 				}
 				else
 				{
-					System.runCommand("", "haxe", haxeArgs.concat(["-D", "static_link"]));
+					runHaxeWithSourceCheck(haxeArgs.concat(["-D", "static_link"]));
 
 					if (noOutput) return;
 
@@ -505,7 +505,7 @@ class WindowsPlatform extends PlatformTarget
 
 				if (!project.targetFlags.exists("static"))
 				{
-					System.runCommand("", "haxe", haxeArgs);
+					runHaxeWithSourceCheck(haxeArgs);
 
 					if (noOutput) return;
 
@@ -515,7 +515,7 @@ class WindowsPlatform extends PlatformTarget
 				}
 				else
 				{
-					System.runCommand("", "haxe", haxeArgs.concat(["-D", "static_link"]));
+					runHaxeWithSourceCheck(haxeArgs.concat(["-D", "static_link"]));
 
 					if (noOutput) return;
 
@@ -531,6 +531,181 @@ class WindowsPlatform extends PlatformTarget
 				{
 					var templates = [Haxelib.getPath(new Haxelib(#if lime "lime" #else "hxp" #end)) + "/templates"].concat(project.templatePaths);
 					System.runCommand("", System.findTemplate(templates, "bin/ReplaceVistaIcon.exe"), [executablePath, iconPath, "1"], true, true);
+				}
+			}
+		}
+	}
+
+	public override function runHaxeWithSourceCheck(args:Array<String>):Void
+	{
+		var hxml:String = null;
+		for (arg in args)
+		{
+			if (arg != null && StringTools.endsWith(arg.toLowerCase(), ".hxml") && FileSystem.exists(arg))
+			{
+				hxml = arg;
+				break;
+			}
+		}
+
+		if (hxml != null)
+		{
+			showHaxeSourceCheck(hxml);
+		}
+
+		System.runCommand("", "haxe", args);
+	}
+
+	public override function showHaxeSourceCheck(hxml:String):Void
+	{
+		var startTime = haxe.Timer.stamp();
+		var classPaths:Array<String> = [];
+		collectHxmlClassPaths(hxml, classPaths, new Map<String, Bool>());
+
+		if (classPaths.length == 0)
+			return;
+
+		var files:Array<String> = [];
+		collectHxFiles(classPaths, files);
+
+		if (files.length == 0)
+			return;
+
+		Log.println("\x1b[36;1m[Stage] Verifying scripts\x1b[0m");
+		Log.println("Checking Haxe source files: " + files.length);
+
+		var supportsAnsi = (Sys.getEnv("ANSICON") != null
+			|| Sys.getEnv("WT_SESSION") != null
+			|| Sys.getEnv("ConEmuANSI") == "ON"
+			|| Sys.getEnv("TERM") == "xterm"
+			|| Sys.getEnv("TERM_PROGRAM") != null);
+
+		var green = supportsAnsi ? "\x1b[32m" : "";
+		var yellow = supportsAnsi ? "\x1b[33m" : "";
+		var red = supportsAnsi ? "\x1b[31m" : "";
+		var reset = supportsAnsi ? "\x1b[0m" : "";
+
+		var width = 20;
+		var total = files.length;
+		var previousLineLength = 0;
+		var liveOutputInitialized = false;
+		for (i in 0...total)
+		{
+			var current = i + 1;
+			var percent = Std.int((current / total) * 100);
+			if (percent > 100) percent = 100;
+
+			var full = Std.int(percent / 5);
+			var rem = percent % 5;
+			var half = rem >= 3 && full < width;
+			var empty = width - full - (half ? 1 : 0);
+
+			var bar = "";
+			for (j in 0...full) bar += green + "#" + reset;
+			if (half) bar += yellow + "=" + reset;
+			for (j in 0...empty) bar += red + "-" + reset;
+
+			var file = files[i].split("\\").join("/");
+			if (file.length > 95)
+			{
+				file = "..." + file.substr(file.length - 92);
+			}
+			var flatBar = "";
+			for (j in 0...full) flatBar += "#";
+			if (half) flatBar += "=";
+			for (j in 0...empty) flatBar += "-";
+			var progressLine = "[" + flatBar + "] " + percent + "%";
+			var plainLine = progressLine + " " + file;
+			var displayLine = "[" + bar + "] " + percent + "%";
+			if (supportsAnsi)
+			{
+				if (!liveOutputInitialized)
+				{
+					Sys.print("\n\n");
+					liveOutputInitialized = true;
+				}
+				Sys.print("\x1b[2A\r\x1b[2K" + displayLine + "\n\x1b[2K" + file + "\n");
+			}
+			else
+			{
+				var padCount = previousLineLength - plainLine.length;
+				if (padCount < 0) padCount = 0;
+				var pad = "";
+				for (j in 0...padCount) pad += " ";
+				Sys.print("\r" + plainLine + pad);
+				previousLineLength = plainLine.length;
+			}
+		}
+
+		Sys.println("");
+		var elapsed = haxe.Timer.stamp() - startTime;
+		Log.println('Reviewed ' + total + ' scripts in ' + Std.string(Std.int(elapsed * 10) / 10) + 's');
+	}
+
+	public override function collectHxmlClassPaths(hxml:String, out:Array<String>, visited:Map<String, Bool>):Void
+	{
+		var normalized = Path.tryFullPath(hxml);
+		if (visited.exists(normalized) || !FileSystem.exists(normalized))
+			return;
+
+		visited.set(normalized, true);
+		var baseDir = Path.directory(normalized);
+		var lines = ~/\r\n|\r|\n/g.split(File.getContent(normalized));
+
+		for (line in lines)
+		{
+			var l = StringTools.trim(line);
+			if (l == "" || StringTools.startsWith(l, "#"))
+				continue;
+
+			if (StringTools.startsWith(l, "-cp ") || StringTools.startsWith(l, "--class-path "))
+			{
+				var cp = StringTools.trim(l.substr(l.indexOf(" ") + 1));
+				if (cp != "")
+				{
+					if (!Path.isAbsolute(cp)) cp = Path.combine(baseDir, cp);
+					cp = Path.tryFullPath(cp);
+					if (FileSystem.exists(cp) && FileSystem.isDirectory(cp))
+						out.push(cp);
+				}
+			}
+			else if (!StringTools.startsWith(l, "-") && StringTools.endsWith(l.toLowerCase(), ".hxml"))
+			{
+				var nested = l;
+				if (!Path.isAbsolute(nested)) nested = Path.combine(baseDir, nested);
+				collectHxmlClassPaths(nested, out, visited);
+			}
+		}
+	}
+
+	public override function collectHxFiles(classPaths:Array<String>, out:Array<String>):Void
+	{
+		var seen = new Map<String, Bool>();
+		for (cp in classPaths)
+		{
+			collectHxFilesRecursive(cp, out, seen);
+		}
+	}
+
+	public override function collectHxFilesRecursive(dir:String, out:Array<String>, seen:Map<String, Bool>):Void
+	{
+		if (!FileSystem.exists(dir) || !FileSystem.isDirectory(dir))
+			return;
+
+		for (entry in FileSystem.readDirectory(dir))
+		{
+			var full = Path.combine(dir, entry);
+			if (FileSystem.isDirectory(full))
+			{
+				collectHxFilesRecursive(full, out, seen);
+			}
+			else if (StringTools.endsWith(entry.toLowerCase(), ".hx"))
+			{
+				var normalized = Path.tryFullPath(full);
+				if (!seen.exists(normalized))
+				{
+					seen.set(normalized, true);
+					out.push(normalized);
 				}
 			}
 		}

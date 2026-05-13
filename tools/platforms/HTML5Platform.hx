@@ -29,6 +29,18 @@ class HTML5Platform extends PlatformTarget
 	private var npm:Bool;
 	private var outputFile:String;
 
+	public override function getCommandStageLabel(command:String):String
+	{
+		return switch (command.toLowerCase())
+		{
+			case "update": "Preparing web assets";
+			case "build": "Building web bundle";
+			case "deploy": "Packaging web output";
+			case "run": "Launching browser";
+			default: super.getCommandStageLabel(command);
+		}
+	}
+
 	public function new(command:String, _project:HXProject, targetFlags:Map<String, String>)
 	{
 		super(command, _project, targetFlags);
@@ -132,7 +144,7 @@ class HTML5Platform extends PlatformTarget
 			}
 
 			var hxml = targetDirectory + "/haxe/" + type + ".hxml";
-			System.runCommand("", "haxe", [hxml]);
+			runHaxeWithSourceCheck([hxml]);
 
 			if (noOutput) return;
 
