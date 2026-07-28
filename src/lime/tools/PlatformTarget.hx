@@ -211,6 +211,7 @@ class PlatformTarget
 		if (hxml != null)
 			showHaxeSourceCheck(hxml);
 
+		emitStage("Running Haxe compiler");
 		System.runCommand("", "haxe", args);
 	}
 
@@ -229,9 +230,47 @@ class PlatformTarget
 		if (files.length == 0)
 			return;
 
-		emitStage("Verifying scripts");
-		Log.println("Checking Haxe source files: " + files.length);
+		files.sort(function(a, b) return Reflect.compare(a, b));
 
+		var engineFiles:Array<String> = [];
+		var generatedFiles:Array<String> = [];
+		var libraryFiles:Array<String> = [];
+
+		for (file in files)
+		{
+			if (isGeneratedSourcePath(file))
+				generatedFiles.push(file);
+			else if (isProjectSourcePath(file))
+				engineFiles.push(file);
+			else
+				libraryFiles.push(file);
+		}
+
+		emitStage("Scanning Haxe sources");
+		Log.println("Checking Haxe source files: "
+			+ files.length
+			+ " ("
+			+ engineFiles.length
+			+ " engine, "
+			+ generatedFiles.length
+			+ " generated, "
+			+ libraryFiles.length
+			+ " libraries)");
+
+		if (engineFiles.length > 0)
+			showSourceProgress("Engine source", engineFiles);
+
+		if (generatedFiles.length > 0)
+			showSourceProgress("Generated source", generatedFiles);
+
+		if (libraryFiles.length > 0)
+			showSourceProgress("Library source", libraryFiles);
+
+		Log.println('Scanned ' + files.length + ' source files in ' + (Std.int((Timer.stamp() - startTime) * 10) / 10) + 's');
+	}
+
+	public function showSourceProgress(label:String, files:Array<String>):Void
+	{
 		var supportsAnsi = (Sys.getEnv("ANSICON") != null
 			|| Sys.getEnv("WT_SESSION") != null
 			|| Sys.getEnv("ConEmuANSI") == "ON"
@@ -246,12 +285,17 @@ class PlatformTarget
 		var total = files.length;
 		var previousLineLength = 0;
 		var liveOutputInitialized = false;
+		var lastPercent = -1;
+
+		Log.println(label + ": " + total + " files");
 
 		for (i in 0...total)
 		{
 			var current = i + 1;
 			var percent = Std.int((current / total) * 100);
 			if (percent > 100) percent = 100;
+			if (percent == lastPercent && current < total) continue;
+			lastPercent = percent;
 
 			var full = Std.int(percent / 5);
 			var rem = percent % 5;
@@ -297,7 +341,6 @@ class PlatformTarget
 		}
 
 		Sys.println("");
-		Log.println('Reviewed ' + total + ' scripts in ' + (Std.int((Timer.stamp() - startTime) * 10) / 10) + 's');
 	}
 
 	public function collectHxmlClassPaths(hxml:String, out:Array<String>, visited:Map<String, Bool>):Void
@@ -321,7 +364,11 @@ class PlatformTarget
 				var cp = StringTools.trim(l.substr(l.indexOf(" ") + 1));
 				if (cp != "")
 				{
-					if (!Path.isAbsolute(cp)) cp = Path.combine(baseDir, cp);
+					if (!Path.isAbsolute(cp))
+					{
+						var projectPath = project != null ? Path.combine(project.workingDirectory, cp) : cp;
+						cp = FileSystem.exists(projectPath) ? projectPath : Path.combine(baseDir, cp);
+					}
 					cp = Path.tryFullPath(cp);
 					if (FileSystem.exists(cp) && FileSystem.isDirectory(cp))
 						out.push(cp);
@@ -330,7 +377,11 @@ class PlatformTarget
 			else if (!StringTools.startsWith(l, "-") && StringTools.endsWith(l.toLowerCase(), ".hxml"))
 			{
 				var nested = l;
-				if (!Path.isAbsolute(nested)) nested = Path.combine(baseDir, nested);
+				if (!Path.isAbsolute(nested))
+				{
+					var projectNested = project != null ? Path.combine(project.workingDirectory, nested) : nested;
+					nested = FileSystem.exists(projectNested) ? projectNested : Path.combine(baseDir, nested);
+				}
 				collectHxmlClassPaths(nested, out, visited);
 			}
 		}
@@ -352,7 +403,10 @@ class PlatformTarget
 		{
 			var full = Path.combine(dir, entry);
 			if (FileSystem.isDirectory(full))
-				collectHxFilesRecursive(full, out, seen);
+			{
+				if (shouldScanHxDirectory(full, entry))
+					collectHxFilesRecursive(full, out, seen);
+			}
 			else if (StringTools.endsWith(entry.toLowerCase(), ".hx"))
 			{
 				var normalized = Path.tryFullPath(full);
@@ -363,6 +417,48 @@ class PlatformTarget
 				}
 			}
 		}
+	}
+
+	public function shouldScanHxDirectory(dir:String, entry:String):Bool
+	{
+		var lower = entry.toLowerCase();
+		if (StringTools.startsWith(lower, ".")) return false;
+		if (isGeneratedSourcePath(dir)) return true;
+		if (isProjectSourcePath(dir)) return true;
+		return ["sample", "samples", "example", "examples", "test", "tests", "doc", "docs"].indexOf(lower) == -1;
+	}
+
+	public function isGeneratedSourcePath(path:String):Bool
+	{
+		if (targetDirectory == null || targetDirectory == "") return false;
+
+		var normalized = normalizeSourcePath(path);
+		var target = normalizeSourcePath(targetDirectory);
+
+		if (!StringTools.endsWith(target, "/")) target += "/";
+		return StringTools.startsWith(normalized, target);
+	}
+
+	public function isProjectSourcePath(path:String):Bool
+	{
+		if (project == null || project.workingDirectory == null || project.workingDirectory == "") return false;
+
+		var normalized = normalizeSourcePath(path);
+		var workingDirectory = normalizeSourcePath(project.workingDirectory);
+
+
+		if (!StringTools.endsWith(workingDirectory, "/")) workingDirectory += "/";
+		return StringTools.startsWith(normalized, workingDirectory);
+	}
+
+	public function normalizeSourcePath(path:String):String
+	{
+		var normalized = Path.standardize(Path.tryFullPath(path));
+
+		if (Sys.systemName() == "Windows")
+			normalized = normalized.toLowerCase();
+
+		return normalized;
 	}
 
 	@ignore public function build():Void {}

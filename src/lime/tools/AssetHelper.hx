@@ -20,6 +20,14 @@ class AssetHelper
 {
 	private static var DEFAULT_LIBRARY_NAME = "default";
 	private static var knownExtensions:Map<String, AssetType>;
+	private static var assetCopyBatchActive = false;
+	private static var assetCopyBatchCurrent = 0;
+	private static var assetCopyBatchTotal = 0;
+	private static var assetCopyBatchCopied = 0;
+	private static var assetCopyBatchSkipped = 0;
+	private static var assetCopyBatchLastPercent = -1;
+	private static var assetCopyBatchPreviousLineLength = 0;
+	private static var assetCopyBatchLiveOutputInitialized = false;
 
 	private static function __init__():Void
 	{
@@ -35,11 +43,42 @@ class AssetHelper
 		];
 	}
 
+	public static function beginAssetCopyBatch(label:String, total:Int):Void
+	{
+		if (total <= 0) return;
+
+		assetCopyBatchActive = true;
+		assetCopyBatchCurrent = 0;
+		assetCopyBatchTotal = total;
+		assetCopyBatchCopied = 0;
+		assetCopyBatchSkipped = 0;
+		assetCopyBatchLastPercent = -1;
+		assetCopyBatchPreviousLineLength = 0;
+		assetCopyBatchLiveOutputInitialized = false;
+
+		Log.println(Log.accentColor + "[Assets] " + label + Log.resetColor);
+		Log.println("Assets to process: " + total);
+		renderAssetCopyProgress("waiting", "");
+	}
+
+	public static function finishAssetCopyBatch():Void
+	{
+		if (!assetCopyBatchActive) return;
+
+		Sys.println("");
+		Log.println("Assets copied: " + assetCopyBatchCopied + ", up-to-date: " + assetCopyBatchSkipped);
+
+		assetCopyBatchActive = false;
+		assetCopyBatchTotal = 0;
+	}
+
 	public static function copyAsset(asset:Asset, destination:String, context:Dynamic = null)
 	{
 		if (asset.sourcePath != "")
 		{
+			var copied = asset.type == TEMPLATE || System.isNewer(asset.sourcePath, destination);
 			System.copyFile(asset.sourcePath, destination, context, asset.type == TEMPLATE);
+			registerAssetCopyProgress(asset, destination, copied ? (asset.type == TEMPLATE ? "processed" : "copied") : "up-to-date", copied);
 		}
 		else
 		{
@@ -62,6 +101,8 @@ class AssetHelper
 			{
 				Log.error("Cannot write to file \"" + destination + "\"");
 			}
+
+			registerAssetCopyProgress(asset, destination, "written", true);
 		}
 	}
 
@@ -69,10 +110,12 @@ class AssetHelper
 	{
 		if (asset.sourcePath != "")
 		{
-			if (System.isNewer(asset.sourcePath, destination))
+			var copied = System.isNewer(asset.sourcePath, destination);
+			if (copied)
 			{
 				System.copyFile(asset.sourcePath, destination, null, asset.type == TEMPLATE);
 			}
+			registerAssetCopyProgress(asset, destination, copied ? "copied" : "up-to-date", copied);
 		}
 		else
 		{
@@ -99,7 +142,101 @@ class AssetHelper
 			{
 				Log.error("Cannot write to file \"" + destination + "\"");
 			}
+
+			registerAssetCopyProgress(asset, destination, "written", true);
 		}
+	}
+
+	private static function registerAssetCopyProgress(asset:Asset, destination:String, status:String, copied:Bool):Void
+	{
+		if (!assetCopyBatchActive) return;
+
+		assetCopyBatchCurrent++;
+		if (copied)
+			assetCopyBatchCopied++;
+		else
+			assetCopyBatchSkipped++;
+
+		renderAssetCopyProgress(status, asset.targetPath != null && asset.targetPath != "" ? asset.targetPath : destination, copied);
+	}
+
+	private static function renderAssetCopyProgress(status:String, path:String, force:Bool = false):Void
+	{
+		if (!assetCopyBatchActive || assetCopyBatchTotal <= 0) return;
+
+		var current = assetCopyBatchCurrent;
+		var percent = Std.int((current / assetCopyBatchTotal) * 100);
+		if (percent > 100) percent = 100;
+		if (!force && percent == assetCopyBatchLastPercent && current < assetCopyBatchTotal) return;
+		assetCopyBatchLastPercent = percent;
+
+		var supportsAnsi = (Sys.getEnv("ANSICON") != null
+			|| Sys.getEnv("WT_SESSION") != null
+			|| Sys.getEnv("ConEmuANSI") == "ON"
+			|| Sys.getEnv("TERM") == "xterm"
+			|| Sys.getEnv("TERM_PROGRAM") != null);
+
+		var green = supportsAnsi ? "\x1b[32m" : "";
+		var yellow = supportsAnsi ? "\x1b[33m" : "";
+		var red = supportsAnsi ? "\x1b[31m" : "";
+		var reset = supportsAnsi ? "\x1b[0m" : "";
+		var width = 20;
+		var full = Std.int(percent / 5);
+		var rem = percent % 5;
+		var half = rem >= 3 && full < width;
+		var empty = width - full - (half ? 1 : 0);
+		var bar = "";
+		var flatBar = "";
+
+		for (i in 0...full)
+		{
+			bar += green + "#" + reset;
+			flatBar += "#";
+		}
+		if (half)
+		{
+			bar += yellow + "=" + reset;
+			flatBar += "=";
+		}
+		for (i in 0...empty)
+		{
+			bar += red + "-" + reset;
+			flatBar += "-";
+		}
+
+		var currentAsset = status + (path != null && path != "" ? ": " + shortenProgressPath(path) : "");
+		var progressLine = "[" + flatBar + "] " + percent + "% " + current + "/" + assetCopyBatchTotal;
+		var displayLine = "[" + bar + "] " + percent + "% " + current + "/" + assetCopyBatchTotal;
+		var plainLine = progressLine + " " + currentAsset;
+
+		if (supportsAnsi)
+		{
+			if (!assetCopyBatchLiveOutputInitialized)
+			{
+				Sys.print("\n\n");
+				assetCopyBatchLiveOutputInitialized = true;
+			}
+			Sys.print("\x1b[2A\r\x1b[2K" + displayLine + "\n\x1b[2K" + currentAsset + "\n");
+		}
+		else
+		{
+			var padCount = assetCopyBatchPreviousLineLength - plainLine.length;
+			if (padCount < 0) padCount = 0;
+			var pad = "";
+			for (i in 0...padCount) pad += " ";
+			Sys.print("\r" + plainLine + pad);
+			assetCopyBatchPreviousLineLength = plainLine.length;
+		}
+	}
+
+	private static function shortenProgressPath(path:String):String
+	{
+		if (path == null) return "";
+
+		var clean = Path.standardize(path);
+		if (clean.length > 110)
+			clean = "..." + clean.substr(clean.length - 107);
+		return clean;
 	}
 
 	public static function createManifest(project:HXProject, library:String = null, targetPath:String = null):AssetManifest
