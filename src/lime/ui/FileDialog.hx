@@ -50,6 +50,72 @@ import js.html.Blob;
 @:access(lime.graphics.Image)
 class FileDialog #if android implements JNISafety #end
 {
+	public static function openDirectory(window:Dynamic, callback:Array<String>->Void, defaultPath:String = null, multiple:Bool = false):Bool
+	{
+		var dialog = new FileDialog();
+		dialog.onSelect.add(function(path:String)
+		{
+			callback(path != null ? [path] : []);
+		});
+		dialog.onCancel.add(function()
+		{
+			callback([]);
+		});
+		return dialog.browse(FileDialogType.OPEN_DIRECTORY, null, defaultPath);
+	}
+
+	public static function openFile(window:Dynamic, callback:Array<String>->Dynamic->Void, filter:Dynamic = null, defaultPath:String = null,
+			multiple:Bool = false):Bool
+	{
+		var dialog = new FileDialog();
+		dialog.onSelect.add(function(path:String)
+		{
+			callback(path != null ? [path] : [], null);
+		});
+		dialog.onSelectMultiple.add(function(paths:Array<String>)
+		{
+			callback(paths != null ? paths : [], null);
+		});
+		dialog.onCancel.add(function()
+		{
+			callback([], null);
+		});
+		return dialog.browse(multiple ? FileDialogType.OPEN_MULTIPLE : FileDialogType.OPEN, normalizeFilter(filter), defaultPath);
+	}
+
+	public static function saveFile(window:Dynamic, callback:String->Dynamic->Void, filter:Dynamic = null, defaultPath:String = null):Bool
+	{
+		var dialog = new FileDialog();
+		dialog.onSave.add(function(path:String)
+		{
+			callback(path, null);
+		});
+		dialog.onCancel.add(function()
+		{
+			callback(null, null);
+		});
+		return dialog.browse(FileDialogType.SAVE, normalizeFilter(filter), defaultPath);
+	}
+
+	static function normalizeFilter(filter:Dynamic):String
+	{
+		if (filter == null) return null;
+		if (Std.isOfType(filter, String)) return filter;
+		if (Std.isOfType(filter, Array))
+		{
+			var parts:Array<String> = [];
+			for (entry in (filter:Array<Dynamic>))
+			{
+				var extension:Dynamic = Reflect.field(entry, "extension");
+				var pattern:Dynamic = Reflect.field(entry, "extensionPattern");
+				if (pattern != null) parts.push(Std.string(pattern));
+				else if (extension != null) parts.push("*." + Std.string(extension));
+			}
+			return parts.length > 0 ? parts.join(";") : null;
+		}
+		return Std.string(filter);
+	}
+
 	/**
 		Triggers when the user clicks "Cancel" during any operation, or when a function is unsupported
 		(such as `open()` on HTML5).
