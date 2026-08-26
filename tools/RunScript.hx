@@ -119,7 +119,7 @@ class RunScript
 		}
 
 		var captureForMeme = shouldCaptureForMeme(command, args);
-		var outputPath = captureForMeme ? getTemporaryPath("lime-error-output.txt") : null;
+		var outputPath = captureForMeme ? getTemporaryRunPath("lime-error-output.txt") : null;
 		var result:Dynamic = captureForMeme ? runCommandWithOutputCapture(command, args, outputPath) : Sys.command(command, args);
 
 		if (oldPath != "")
@@ -145,8 +145,8 @@ class RunScript
 
 	private static function runCommandWithOutputCapture(command:String, args:Array<String>, outputPath:String):Int
 	{
-		var scriptPath = getTemporaryPath("lime-error-capture.ps1");
-		var commandPath = getTemporaryPath("lime-error-command.bat");
+		var scriptPath = getTemporaryRunPath("lime-error-capture.ps1");
+		var commandPath = getTemporaryRunPath("lime-error-command.bat");
 		var commandLine = ([cmdQuote(command)].concat([for (arg in args) cmdQuote(arg)])).join(" ");
 		var script = [];
 		var output = psQuote(outputPath);
@@ -163,20 +163,23 @@ class RunScript
 		script.push("$process = New-Object System.Diagnostics.Process");
 		script.push("$process.StartInfo = $startInfo");
 		script.push("$console = [Console]::OpenStandardOutput()");
-		script.push("$file = [System.IO.File]::Open(" + output + ", [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write, [System.IO.FileShare]::Read)");
+		script.push("$file = $null");
+		script.push("$file = [System.IO.File]::Open(" + output + ", [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write, [System.IO.FileShare]::ReadWrite)");
 		script.push("$buffer = New-Object byte[] 4096");
 		script.push("$null = $process.Start()");
 		script.push("try {");
 		script.push("    while (($read = $process.StandardOutput.BaseStream.Read($buffer, 0, $buffer.Length)) -gt 0) {");
 		script.push("        $console.Write($buffer, 0, $read)");
 		script.push("        $console.Flush()");
-		script.push("        $file.Write($buffer, 0, $read)");
-		script.push("        $file.Flush()");
+		script.push("        if ($file -ne $null) {");
+		script.push("            $file.Write($buffer, 0, $read)");
+		script.push("            $file.Flush()");
+		script.push("        }");
 		script.push("    }");
 		script.push("    $process.WaitForExit()");
 		script.push("    $exitCode = $process.ExitCode");
 		script.push("} finally {");
-		script.push("    $file.Dispose()");
+		script.push("    if ($file -ne $null) { $file.Dispose() }");
 		script.push("    if ($process -ne $null) { $process.Dispose() }");
 		script.push("}");
 		script.push("exit $exitCode");
@@ -191,8 +194,8 @@ class RunScript
 
 		var title = getErrorTitle(outputPath, exitCode);
 		var cause = getErrorCause(outputPath, exitCode);
-		var causePath = getTemporaryPath("lime-error-cause.txt");
-		var scriptPath = getTemporaryPath("lime-meme-error-player.ps1");
+		var causePath = getTemporaryRunPath("lime-error-cause.txt");
+		var scriptPath = getTemporaryRunPath("lime-meme-error-player.ps1");
 		File.saveContent(causePath, cause);
 		File.saveContent(scriptPath, getMemePlayerScript());
 		Sys.command("powershell.exe", [
@@ -426,6 +429,21 @@ class RunScript
 		if (temp == null || temp == "") temp = Sys.getEnv("TMP");
 		if (temp == null || temp == "") temp = Sys.getCwd();
 		return Path.combine(temp, name);
+	}
+
+	private static function getTemporaryRunPath(name:String):String
+	{
+		var dot = name.lastIndexOf(".");
+		var suffix = "-" + Std.string(Date.now().getTime()) + "-" + Std.random(1000000);
+		if (dot > -1)
+		{
+			name = name.substr(0, dot) + suffix + name.substr(dot);
+		}
+		else
+		{
+			name += suffix;
+		}
+		return getTemporaryPath(name);
 	}
 
 	private static function psQuote(value:String):String
