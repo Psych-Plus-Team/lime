@@ -177,8 +177,10 @@ class RunScript
 		script.push("    while (($read = $process.StandardOutput.BaseStream.Read($buffer, 0, $buffer.Length)) -gt 0) {");
 		script.push("        $console.Write($buffer, 0, $read)");
 		script.push("        $console.Flush()");
-		script.push("        $file.Write($buffer, 0, $read)");
-		script.push("        $file.Flush()");
+		script.push("        if ($file -ne $null) {");
+		script.push("            $file.Write($buffer, 0, $read)");
+		script.push("            $file.Flush()");
+		script.push("        }");
 		script.push("    }");
 		script.push("    $process.WaitForExit()");
 		script.push("    $exitCode = $process.ExitCode");
@@ -198,8 +200,8 @@ class RunScript
 
 		var title = getErrorTitle(outputPath, exitCode);
 		var cause = getErrorCause(outputPath, exitCode);
-		var causePath = getTemporaryPath("lime-error-cause.txt");
-		var scriptPath = getTemporaryPath("lime-meme-error-player.ps1");
+		var causePath = getTemporaryRunPath("lime-error-cause.txt");
+		var scriptPath = getTemporaryRunPath("lime-meme-error-player.ps1");
 		File.saveContent(causePath, cause);
 		File.saveContent(scriptPath, getMemePlayerScript());
 		Sys.command("powershell.exe", [
@@ -433,6 +435,21 @@ class RunScript
 		if (temp == null || temp == "") temp = Sys.getEnv("TMP");
 		if (temp == null || temp == "") temp = Sys.getCwd();
 		return Path.combine(temp, name);
+	}
+
+	private static function getTemporaryRunPath(name:String):String
+	{
+		var dot = name.lastIndexOf(".");
+		var suffix = "-" + Std.string(Date.now().getTime()) + "-" + Std.random(1000000);
+		if (dot > -1)
+		{
+			name = name.substr(0, dot) + suffix + name.substr(dot);
+		}
+		else
+		{
+			name += suffix;
+		}
+		return getTemporaryPath(name);
 	}
 
 	private static function psQuote(value:String):String
