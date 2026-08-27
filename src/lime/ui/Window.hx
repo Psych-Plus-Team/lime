@@ -669,6 +669,11 @@ class Window
 		return __backend.setTextInputRect(value);
 	}
 
+	public function requestTextInput(value:Bool):Void
+	{
+		textInputEnabled = value;
+	}
+
 	@:noCompletion private inline function get_title():String
 	{
 		return __title;

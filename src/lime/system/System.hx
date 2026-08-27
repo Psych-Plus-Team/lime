@@ -376,6 +376,11 @@ class System
 		return null;
 	}
 
+	public static function getDisplayOrientation(display:Display):Orientation
+	{
+		return display != null ? display.orientation : UNKNOWN;
+	}
+
 	/**
 		The number of milliseconds since the application was initialized.
 	**/

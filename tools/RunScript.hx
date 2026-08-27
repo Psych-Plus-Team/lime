@@ -119,8 +119,9 @@ class RunScript
 		}
 
 		var captureForMeme = shouldCaptureForMeme(command, args);
-		var outputPath = captureForMeme ? getTemporaryPath("lime-error-output.txt") : null;
-		var result:Dynamic = captureForMeme ? runCommandWithOutputCapture(command, args, outputPath) : Sys.command(command, args);
+		var captureSuffix = captureForMeme ? temporaryCaptureSuffix() : null;
+		var outputPath = captureForMeme ? getTemporaryPath("lime-error-output-" + captureSuffix + ".txt") : null;
+		var result:Dynamic = captureForMeme ? runCommandWithOutputCapture(command, args, outputPath, captureSuffix) : Sys.command(command, args);
 
 		if (oldPath != "")
 		{
@@ -143,10 +144,15 @@ class RunScript
 		return Path.withoutDirectory(command).toLowerCase() == "neko" && StringTools.replace(args[0], "\\", "/") == "tools/tools.n";
 	}
 
-	private static function runCommandWithOutputCapture(command:String, args:Array<String>, outputPath:String):Int
+	private static function temporaryCaptureSuffix():String
 	{
-		var scriptPath = getTemporaryPath("lime-error-capture.ps1");
-		var commandPath = getTemporaryPath("lime-error-command.bat");
+		return Std.string(Date.now().getTime()).split(".").join("") + "-" + Std.string(Std.int(Math.random() * 0xFFFFFF));
+	}
+
+	private static function runCommandWithOutputCapture(command:String, args:Array<String>, outputPath:String, captureSuffix:String):Int
+	{
+		var scriptPath = getTemporaryPath("lime-error-capture-" + captureSuffix + ".ps1");
+		var commandPath = getTemporaryPath("lime-error-command-" + captureSuffix + ".bat");
 		var commandLine = ([cmdQuote(command)].concat([for (arg in args) cmdQuote(arg)])).join(" ");
 		var script = [];
 		var output = psQuote(outputPath);
@@ -163,7 +169,8 @@ class RunScript
 		script.push("$process = New-Object System.Diagnostics.Process");
 		script.push("$process.StartInfo = $startInfo");
 		script.push("$console = [Console]::OpenStandardOutput()");
-		script.push("$file = [System.IO.File]::Open(" + output + ", [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write, [System.IO.FileShare]::Read)");
+		script.push("$file = $null");
+		script.push("$file = [System.IO.File]::Open(" + output + ", [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write, [System.IO.FileShare]::ReadWrite)");
 		script.push("$buffer = New-Object byte[] 4096");
 		script.push("$null = $process.Start()");
 		script.push("try {");
@@ -176,7 +183,7 @@ class RunScript
 		script.push("    $process.WaitForExit()");
 		script.push("    $exitCode = $process.ExitCode");
 		script.push("} finally {");
-		script.push("    $file.Dispose()");
+		script.push("    if ($file -ne $null) { $file.Dispose() }");
 		script.push("    if ($process -ne $null) { $process.Dispose() }");
 		script.push("}");
 		script.push("exit $exitCode");
