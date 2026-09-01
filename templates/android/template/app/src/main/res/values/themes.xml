@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <resources>
-	<style name="LimeAppMainThemeFullscreen" parent="Theme.Material3.Dark.NoActionBar">
+	<style name="LimeAppMainThemeFullscreen" parent="@android:style/Theme.Material.NoActionBar.Fullscreen">
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBar">false</item>
@@ -10,7 +10,7 @@
 		<item name="android:statusBarColor">@android:color/transparent</item>
 	</style>
 
-	<style name="LimeAppMainTheme" parent="Theme.Material3.Dark.NoActionBar">
+	<style name="LimeAppMainTheme" parent="@android:style/Theme.Material.NoActionBar">
 		<item name="android:windowDrawsSystemBarBackgrounds">true</item>
 		<item name="android:windowSwipeToDismiss">false</item>
 		<item name="android:windowBackground">@android:color/black</item>

@@ -1,36 +1,32 @@
 package lime.system;
 
 #if (android && lime_cffi)
-import lime._internal.backend.native.NativeCFFI;
 import lime.utils.Bytes;
+import sys.FileSystem;
+import sys.io.File;
 
 #if !lime_debug
 @:fileXml('tags="haxe,release"')
 @:noDebug
 #end
-@:access(lime._internal.backend.native.NativeCFFI)
 class DocumentSystem {
 
 	@:noCompletion
-	private var handle:Dynamic;
+	private var root:String;
 
     public function new(treeUri:String) {
-        handle = NativeCFFI.lime_documentsystem_create(treeUri);
+        root = treeUri;
     }
 
 	public function writeBytes(path:String, bytes:Bytes):Void
 	{
-		NativeCFFI.lime_documentsystem_write_bytes(handle, path, bytes);
+		File.saveBytes(resolve(path), bytes);
 	}
 
 	public function readBytes(path:String):Bytes
 	{
-		var bytes:Bytes = Bytes.alloc(0);
-		NativeCFFI.lime_documentsystem_read_bytes(handle, path, bytes);
-		if (bytes.length == 0) {
-			return null;
-		}
-		return bytes;
+		var fullPath:String = resolve(path);
+		return FileSystem.exists(fullPath) ? File.getBytes(fullPath) : null;
 	}
 
 	public function saveContent(path:String, content:String):Void
@@ -49,32 +45,51 @@ class DocumentSystem {
 
 	public function createDirectory(path:String):Void
 	{
-		NativeCFFI.lime_documentsystem_create_directory(handle, path);
+		FileSystem.createDirectory(resolve(path));
 	}
 
 	public function readDirectory(path:String):Array<String>
 	{
-		return NativeCFFI.lime_documentsystem_read_directory(handle, path);
+		var fullPath:String = resolve(path);
+		return FileSystem.exists(fullPath) && FileSystem.isDirectory(fullPath) ? FileSystem.readDirectory(fullPath) : [];
 	}
 
 	public function exists(path:String):Bool
 	{
-		return NativeCFFI.lime_documentsystem_exists(handle, path);
+		return FileSystem.exists(resolve(path));
 	}
 
 	public function deleteDirectory(path:String):Bool
 	{
-		return NativeCFFI.lime_documentsystem_delete_directory(handle, path);
+		var fullPath:String = resolve(path);
+		if (!FileSystem.exists(fullPath) || !FileSystem.isDirectory(fullPath))
+			return false;
+		FileSystem.deleteDirectory(fullPath);
+		return true;
 	}
 
 	public function deleteFile(path:String):Bool
 	{
-		return NativeCFFI.lime_documentsystem_delete_file(handle, path);
+		var fullPath:String = resolve(path);
+		if (!FileSystem.exists(fullPath) || FileSystem.isDirectory(fullPath))
+			return false;
+		FileSystem.deleteFile(fullPath);
+		return true;
 	}
 
 	public function isDirectory(path:String):Bool
 	{
-		return NativeCFFI.lime_documentsystem_is_directory(handle, path);
+		var fullPath:String = resolve(path);
+		return FileSystem.exists(fullPath) && FileSystem.isDirectory(fullPath);
+	}
+
+	function resolve(path:String):String
+	{
+		if (path == null || path.length == 0)
+			return root;
+		if (root == null || root.length == 0 || path.indexOf(':') >= 0 || StringTools.startsWith(path, '/') || StringTools.startsWith(path, '\\'))
+			return path;
+		return root + (StringTools.endsWith(root, '/') || StringTools.endsWith(root, '\\') ? '' : '/') + path;
 	}
 }
 #end

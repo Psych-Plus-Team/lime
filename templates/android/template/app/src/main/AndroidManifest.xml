@@ -13,7 +13,7 @@
 		<meta-data android:name="SDL_ENV.SDL_IOS_ORIENTATIONS" android:value="Portrait PortraitUpsideDown" />
 		::elseif (WIN_ORIENTATION=="landscape")::
 		<meta-data android:name="SDL_ENV.SDL_IOS_ORIENTATIONS" android:value="LandscapeLeft LandscapeRight" />
-		::end::z
+		::end::
 
 		<activity ::foreach ANDROID_ACTIVITY::::if ((value != null) && (value != ""))::::key::="::value::" ::end::::end::>
 
@@ -41,7 +41,7 @@
 		<activity
 			android:name="com.leninasto.plusengine.FileManagerActivity"
 			android:label="File Manager"
-			android:theme="@style/Theme.Material3.DayNight.NoActionBar"
+			android:theme="@style/LimeAppMainTheme"
 			android:parentActivityName="::ANDROID_ACTIVITY_NAME::">
 			<meta-data
 				android:name="android.support.PARENT_ACTIVITY"
@@ -51,7 +51,7 @@
 		<activity
 			android:name="com.leninasto.plusengine.NativeCrashActivity"
 			android:label="Crash Report"
-			android:theme="@style/Theme.Material3.DayNight.NoActionBar"
+			android:theme="@style/LimeAppMainTheme"
 			android:process=":native_crash"
 			android:exported="false" />
 
