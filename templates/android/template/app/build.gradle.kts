@@ -1,6 +1,7 @@
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.awt.Insets
+import org.gradle.api.tasks.compile.JavaCompile
 
 plugins {
 	id("com.android.application")
@@ -9,6 +10,10 @@ plugins {
 }
 
 System.setProperty("java.awt.headless", "false")
+
+tasks.withType<JavaCompile>().configureEach {
+	exclude("**/org/libsdl/app/SDLSurface.java")
+}
 
 //Uncomment to debug deprecation warnings.
 /* tasks.withType<JavaCompile> {
@@ -105,6 +110,7 @@ android {
 dependencies {
 	::if (ANDROID_USE_ANDROIDX)::
 	// AndroidX Core
+	implementation("androidx.activity:activity:1.10.1")
 	implementation("androidx.core:core:1.15.0")
 	implementation("androidx.core:core-ktx:1.15.0")
 	implementation("androidx.documentfile:documentfile:1.1.0")
@@ -118,6 +124,7 @@ dependencies {
 	implementation(composeBom)
 	
 	// Compose Libraries (versions managed by BOM)
+	implementation("androidx.activity:activity-compose:1.10.1")
 	implementation("androidx.compose.ui:ui")
 	implementation("androidx.compose.material3:material3:1.4.0")
 	implementation("androidx.compose.material:material-icons-extended")

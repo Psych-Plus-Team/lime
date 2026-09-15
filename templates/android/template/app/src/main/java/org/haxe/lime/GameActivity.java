@@ -9,6 +9,10 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 ::if (ANDROID_USE_ANDROIDX)::
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.core.content.FileProvider;
 import ::APP_PACKAGE::.BuildConfig;
 ::end::
@@ -16,6 +20,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.view.DisplayCutout;
@@ -28,6 +33,10 @@ import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.webkit.MimeTypeMap;
+::if (ANDROID_TARGET_SDK_VERSION >= 33)::
+import android.window.OnBackInvokedCallback;
+import android.window.OnBackInvokedDispatcher;
+::end::
 import android.Manifest;
 import org.haxe.extension.Extension;
 import android.view.WindowManager;
@@ -55,6 +64,15 @@ public class GameActivity extends SDLActivity {
 	private static OrientationEventListener orientationListener;
 	private static HaxeObject deviceOrientationListener;
 	private static int deviceOrientation = SDL_ORIENTATION_UNKNOWN;
+	private ActivityResultLauncher<Intent> openDocumentLauncher;
+	private ActivityResultLauncher<Intent> saveDocumentLauncher;
+	private ActivityResultLauncher<Intent> documentTreeLauncher;
+	private FileDialog pendingOpenDialog;
+	private FileDialog pendingSaveDialog;
+	private FileDialog pendingDocumentTreeDialog;
+	::if (ANDROID_TARGET_SDK_VERSION >= 33)::
+	private OnBackInvokedCallback systemBackCallback;
+	::end::
 
 	public Handler handler;
 
@@ -136,6 +154,7 @@ public class GameActivity extends SDLActivity {
 	}
 
 
+	@SuppressWarnings("deprecation")
 	@Override protected void onActivityResult (int requestCode, int resultCode, Intent data) {
 
 		for (Extension extension : extensions) {
@@ -159,19 +178,47 @@ public class GameActivity extends SDLActivity {
 	}
 
 
+	@SuppressWarnings("deprecation")
 	@Override public void onBackPressed () {
+
+		dispatchSystemBackButton ();
+
+	}
+
+
+	private boolean extensionsHandleSystemBack () {
+
+		if (extensions == null) {
+
+			return true;
+
+		}
 
 		for (Extension extension : extensions) {
 
 			if (!extension.onBackPressed ()) {
 
-				return;
+				return false;
 
 			}
 
 		}
 
-		super.onBackPressed ();
+		return true;
+
+	}
+
+
+	private void dispatchSystemBackButton () {
+
+		if (!extensionsHandleSystemBack ()) {
+
+			return;
+
+		}
+
+		SDLActivity.onNativeKeyDown (KeyEvent.KEYCODE_BACK);
+		SDLActivity.onNativeKeyUp (KeyEvent.KEYCODE_BACK);
 
 	}
 
@@ -186,7 +233,93 @@ public class GameActivity extends SDLActivity {
 		return fileDialog;
 	}
 
+	public void launchFileDialog (final FileDialog fileDialog, final Intent intent, final int requestCode) {
+
+		switch (requestCode) {
+
+			case FileDialog.OPEN_REQUEST_CODE:
+				pendingOpenDialog = fileDialog;
+				openDocumentLauncher.launch (intent);
+				break;
+
+			case FileDialog.SAVE_REQUEST_CODE:
+				pendingSaveDialog = fileDialog;
+				saveDocumentLauncher.launch (intent);
+				break;
+
+			case FileDialog.DOCUMENT_TREE_REQUEST_CODE:
+				pendingDocumentTreeDialog = fileDialog;
+				documentTreeLauncher.launch (intent);
+				break;
+
+			default:
+				Log.e ("GameActivity", "Unknown file dialog request code: " + requestCode);
+				fileDialog.onActivityResult (requestCode, RESULT_CANCELED, null);
+				break;
+
+		}
+
+	}
+
+	private void registerFileDialogLaunchers () {
+
+		openDocumentLauncher = registerForActivityResult (
+			new ActivityResultContracts.StartActivityForResult (),
+			new ActivityResultCallback<ActivityResult> () {
+
+				@Override public void onActivityResult (ActivityResult result) {
+
+					dispatchFileDialogResult (pendingOpenDialog, FileDialog.OPEN_REQUEST_CODE, result);
+					pendingOpenDialog = null;
+
+				}
+
+			}
+		);
+
+		saveDocumentLauncher = registerForActivityResult (
+			new ActivityResultContracts.StartActivityForResult (),
+			new ActivityResultCallback<ActivityResult> () {
+
+				@Override public void onActivityResult (ActivityResult result) {
+
+					dispatchFileDialogResult (pendingSaveDialog, FileDialog.SAVE_REQUEST_CODE, result);
+					pendingSaveDialog = null;
+
+				}
+
+			}
+		);
+
+		documentTreeLauncher = registerForActivityResult (
+			new ActivityResultContracts.StartActivityForResult (),
+			new ActivityResultCallback<ActivityResult> () {
+
+				@Override public void onActivityResult (ActivityResult result) {
+
+					dispatchFileDialogResult (pendingDocumentTreeDialog, FileDialog.DOCUMENT_TREE_REQUEST_CODE, result);
+					pendingDocumentTreeDialog = null;
+
+				}
+
+			}
+		);
+
+	}
+
+	private void dispatchFileDialogResult (FileDialog fileDialog, int requestCode, ActivityResult result) {
+
+		if (fileDialog != null) {
+
+			fileDialog.onActivityResult (requestCode, result.getResultCode (), result.getData ());
+
+		}
+
+	}
+
 	protected void onCreate (Bundle state) {
+
+		LimeCrashHandler.install (this);
 
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
 
@@ -195,6 +328,7 @@ public class GameActivity extends SDLActivity {
 		}
 
 		super.onCreate (state);
+		registerFileDialogLaunchers ();
 
 		orientationListener = new OrientationEventListener(this) {
 
@@ -269,7 +403,7 @@ public class GameActivity extends SDLActivity {
 
 		}
 
-		handler = new Handler ();
+		handler = new Handler (Looper.getMainLooper ());
 
 		Extension.assetManager = assetManager;
 		Extension.callbackHandler = handler;
@@ -277,6 +411,27 @@ public class GameActivity extends SDLActivity {
 		Extension.mainContext = this;
 		Extension.mainView = mLayout;
 		Extension.packageName = getApplicationContext ().getPackageName ();
+
+		::if (ANDROID_TARGET_SDK_VERSION >= 33)::
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+
+			systemBackCallback = new OnBackInvokedCallback () {
+
+				@Override public void onBackInvoked () {
+
+					dispatchSystemBackButton ();
+
+				}
+
+			};
+
+			getOnBackInvokedDispatcher ().registerOnBackInvokedCallback (
+				OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+				systemBackCallback
+			);
+
+		}
+		::end::
 
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
 
@@ -329,6 +484,15 @@ public class GameActivity extends SDLActivity {
 
 
 	@Override protected void onDestroy () {
+
+		::if (ANDROID_TARGET_SDK_VERSION >= 33)::
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && systemBackCallback != null) {
+
+			getOnBackInvokedDispatcher ().unregisterOnBackInvokedCallback (systemBackCallback);
+			systemBackCallback = null;
+
+		}
+		::end::
 
 		for (Extension extension : extensions) {
 

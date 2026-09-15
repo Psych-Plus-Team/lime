@@ -32,11 +32,12 @@ import android.hardware.*;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ApplicationInfo;
+import androidx.activity.ComponentActivity;
 
 /**
     SDL Activity
 */
-public class SDLActivity extends Activity implements View.OnSystemUiVisibilityChangeListener {
+public class SDLActivity extends ComponentActivity implements View.OnSystemUiVisibilityChangeListener {
     private static final String TAG = "SDL";
 
     public static boolean mIsResumedCalled, mHasFocus;
@@ -251,7 +252,7 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
         // mHIDDeviceManager = HIDDeviceManager.acquire(this);
 
         // Set up the surface
-        mSurface = new SDLSurface(getApplication());
+        mSurface = new SDLSurface(this);
 
         mLayout = new RelativeLayout(this);
         mLayout.addView(mSurface);
@@ -347,9 +348,12 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
 
     public static int getCurrentOrientation() {
         final Context context = SDLActivity.getContext();
-        final Display display = ((WindowManager) context.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
+        final Display display = SDLActivity.getDisplay(context);
 
         int result = SDL_ORIENTATION_UNKNOWN;
+        if (display == null) {
+            return result;
+        }
 
         switch (display.getRotation()) {
             case Surface.ROTATION_0:
@@ -370,6 +374,78 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
         }
 
         return result;
+    }
+
+    @SuppressWarnings("deprecation")
+    public static Display getDisplay(Context context) {
+        if (context == null) {
+            return null;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (context instanceof Activity) {
+                return ((Activity) context).getDisplay();
+            }
+
+            if (mSingleton != null) {
+                return mSingleton.getDisplay();
+            }
+
+            try {
+                return context.getDisplay();
+            } catch (UnsupportedOperationException exception) {
+                Log.w(TAG, "Context is not attached to a display; falling back to WindowManager.", exception);
+            }
+        }
+
+        WindowManager windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+        return windowManager != null ? windowManager.getDefaultDisplay() : null;
+    }
+
+    @SuppressWarnings("deprecation")
+    public static void getDisplayMetrics(Context context, DisplayMetrics metrics) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && context instanceof Activity) {
+            WindowMetrics windowMetrics = ((Activity) context).getWindowManager().getCurrentWindowMetrics();
+            Rect bounds = windowMetrics.getBounds();
+            metrics.widthPixels = bounds.width();
+            metrics.heightPixels = bounds.height();
+
+            DisplayMetrics resourceMetrics = context.getResources().getDisplayMetrics();
+            metrics.density = resourceMetrics.density;
+            metrics.densityDpi = resourceMetrics.densityDpi;
+            metrics.scaledDensity = resourceMetrics.scaledDensity;
+            metrics.xdpi = resourceMetrics.xdpi;
+            metrics.ydpi = resourceMetrics.ydpi;
+            return;
+        }
+
+        Display display = getDisplay(context);
+        if (display != null) {
+            display.getMetrics(metrics);
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    public static void getRealDisplayMetrics(Context context, DisplayMetrics metrics) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && context instanceof Activity) {
+            WindowMetrics windowMetrics = ((Activity) context).getWindowManager().getMaximumWindowMetrics();
+            Rect bounds = windowMetrics.getBounds();
+            metrics.widthPixels = bounds.width();
+            metrics.heightPixels = bounds.height();
+
+            DisplayMetrics resourceMetrics = context.getResources().getDisplayMetrics();
+            metrics.density = resourceMetrics.density;
+            metrics.densityDpi = resourceMetrics.densityDpi;
+            metrics.scaledDensity = resourceMetrics.scaledDensity;
+            metrics.xdpi = resourceMetrics.xdpi;
+            metrics.ydpi = resourceMetrics.ydpi;
+            return;
+        }
+
+        Display display = getDisplay(context);
+        if (display != null) {
+            display.getRealMetrics(metrics);
+        }
     }
 
     @Override
@@ -443,6 +519,7 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public void onBackPressed() {
         // Check if we want to block the back button in case of mouse right click.
         //
@@ -479,6 +556,7 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
     }
 
     // Used to access the system back behavior.
+    @SuppressWarnings("deprecation")
     public void superOnBackPressed() {
         super.onBackPressed();
     }
@@ -713,9 +791,8 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
 
             if (data instanceof Integer) {
                 // Let's figure out if we're already laid out fullscreen or not.
-                Display display = ((WindowManager)getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
                 android.util.DisplayMetrics realMetrics = new android.util.DisplayMetrics();
-                display.getRealMetrics( realMetrics );
+                SDLActivity.getRealDisplayMetrics(this, realMetrics);
 
                 boolean bFullscreenLayout = ((realMetrics.widthPixels == mSurface.getWidth()) &&
                                              (realMetrics.heightPixels == mSurface.getHeight()));
@@ -1021,7 +1098,7 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
         if (activity == null) {
             return false;
         }
-        activity.getWindowManager().getDefaultDisplay().getMetrics(metrics);
+        SDLActivity.getDisplayMetrics(activity, metrics);
 
         double dWidthInches = metrics.widthPixels / (double)metrics.xdpi;
         double dHeightInches = metrics.heightPixels / (double)metrics.ydpi;
@@ -1622,7 +1699,7 @@ class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
         setOnKeyListener(this);
         setOnTouchListener(this);
 
-        mDisplay = ((WindowManager)context.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
+        mDisplay = SDLActivity.getDisplay(context);
         mSensorManager = (SensorManager)context.getSystemService(Context.SENSOR_SERVICE);
 
         setOnGenericMotionListener(SDLActivity.getMotionListener());
@@ -1713,7 +1790,7 @@ class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
         {
             if (Build.VERSION.SDK_INT >= 17) {
                 android.util.DisplayMetrics realMetrics = new android.util.DisplayMetrics();
-                mDisplay.getRealMetrics( realMetrics );
+                SDLActivity.getRealDisplayMetrics(SDLActivity.getContext(), realMetrics);
                 nDeviceWidth = realMetrics.widthPixels;
                 nDeviceHeight = realMetrics.heightPixels;
             }
@@ -1727,7 +1804,7 @@ class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
 
         Log.v("SDL", "Window size: " + width + "x" + height);
         Log.v("SDL", "Device size: " + nDeviceWidth + "x" + nDeviceHeight);
-        SDLActivity.nativeSetScreenResolution(width, height, nDeviceWidth, nDeviceHeight, sdlFormat, mDisplay.getRefreshRate());
+        SDLActivity.nativeSetScreenResolution(width, height, nDeviceWidth, nDeviceHeight, sdlFormat, mDisplay != null ? mDisplay.getRefreshRate() : 0.0f);
         SDLActivity.onNativeResize();
 
         // Prevent a screen distortion glitch,

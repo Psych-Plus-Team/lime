@@ -1,7 +1,6 @@
 package org.haxe.extension;
 
 import android.app.AlertDialog;
-import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
@@ -26,6 +25,7 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.core.app.NotificationCompat;
 import androidx.core.content.FileProvider;
 import java.io.File;
 import java.util.ArrayList;
@@ -266,10 +266,7 @@ public class Tools extends Extension
 			{
 				Intent intent = new Intent(Intent.ACTION_VIEW);
 
-				if (Build.VERSION.SDK_INT >= 24)
-					intent.setDataAndType(FileProvider.getUriForFile(mainContext, packageName + ".provider", file), "application/vnd.android.package-archive");
-				else
-					intent.setDataAndType(Uri.fromFile(file), "application/vnd.android.package-archive");
+				intent.setDataAndType(FileProvider.getUriForFile(mainContext, packageName + ".provider", file), "application/vnd.android.package-archive");
 
 				intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 				intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -342,7 +339,39 @@ public class Tools extends Extension
 	{
 		try
 		{
-			mainActivity.startActivityForResult(mainActivity.getPackageManager().getLaunchIntentForPackage(packageName), requestCode);
+			final Intent intent = mainActivity.getPackageManager().getLaunchIntentForPackage(packageName);
+			if (intent != null)
+				mainActivity.startActivity(intent);
+			else
+				Log.e(LOG_TAG, "Could not launch package " + packageName + " because Android returned no launch intent.");
+		}
+		catch (Exception e)
+		{
+			Log.e(LOG_TAG, e.toString());
+		}
+	}
+
+	/**
+	 * Finishes the active Lime activity and returns to the previous Android activity.
+	 */
+	public static void finishActivity()
+	{
+		try
+		{
+			mainActivity.runOnUiThread(new Runnable()
+			{
+				@Override public void run()
+				{
+					try
+					{
+						mainActivity.finish();
+					}
+					catch (Exception e)
+					{
+						Log.e(LOG_TAG, e.toString());
+					}
+				}
+			});
 		}
 		catch (Exception e)
 		{
@@ -389,7 +418,7 @@ public class Tools extends Extension
 		{
 			final Intent intent = new Intent(setting);
 			intent.setData(Uri.fromParts("package", packageName, null));
-			mainActivity.startActivityForResult(intent, requestCode);
+			mainActivity.startActivity(intent);
 		}
 		catch (Exception e)
 		{
@@ -448,12 +477,7 @@ public class Tools extends Extension
 					if (Build.VERSION.SDK_INT >= 26)
 						notificationManager.createNotificationChannel(new NotificationChannel(channelID, channelName, NotificationManager.IMPORTANCE_DEFAULT));
 
-					final Notification.Builder builder;
-
-					if (Build.VERSION.SDK_INT >= 26)
-						builder = new Notification.Builder(mainContext, channelID);
-					else
-						builder = new Notification.Builder(mainContext);
+					final NotificationCompat.Builder builder = new NotificationCompat.Builder(mainContext, channelID);
 
 					builder.setAutoCancel(true);
 					builder.setContentTitle(title);

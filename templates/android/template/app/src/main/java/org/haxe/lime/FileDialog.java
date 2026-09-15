@@ -52,9 +52,9 @@ import org.haxe.lime.GameActivity;
 public class FileDialog extends Extension
 {
 	public static final String LOG_TAG = "FileDialog";
-	private static final int OPEN_REQUEST_CODE = 990;
-	private static final int SAVE_REQUEST_CODE = 995;
-	private static final int DOCUMENT_TREE_REQUEST_CODE = 999;
+	public static final int OPEN_REQUEST_CODE = 990;
+	public static final int SAVE_REQUEST_CODE = 995;
+	public static final int DOCUMENT_TREE_REQUEST_CODE = 999;
 
 	public HaxeObject haxeObject;
 	public FileSaveCallback onFileSave = null;
@@ -114,7 +114,7 @@ public class FileDialog extends Extension
 		
 		Log.d(LOG_TAG, "launching file picker (ACTION_OPEN_DOCUMENT) intent!");
 		awaitingResults = true;
-		mainActivity.startActivityForResult(intent, OPEN_REQUEST_CODE);
+		((GameActivity)mainActivity).launchFileDialog(this, intent, OPEN_REQUEST_CODE);
 	}
 
 	public void save(byte[] data, String mime, String defaultPath, String title)
@@ -165,7 +165,7 @@ public class FileDialog extends Extension
 		awaitingResults = true;
 		
 		intent.setType(mime);
-		mainActivity.startActivityForResult(intent, SAVE_REQUEST_CODE);
+		((GameActivity)mainActivity).launchFileDialog(this, intent, SAVE_REQUEST_CODE);
 	}
 
 	public void openDocumentTree(String defaultPath)
@@ -191,7 +191,7 @@ public class FileDialog extends Extension
 
 		Log.d(LOG_TAG, "launching directory picker (ACTION_OPEN_DOCUMENT_TREE) intent!");
 		awaitingResults = true;
-        mainActivity.startActivityForResult(intent, DOCUMENT_TREE_REQUEST_CODE);
+        ((GameActivity)mainActivity).launchFileDialog(this, intent, DOCUMENT_TREE_REQUEST_CODE);
     }
 
 	public static void getPersistableURIAccess(String uriStr)

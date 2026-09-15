@@ -595,7 +595,32 @@ class AndroidPlatform extends PlatformTarget
 
 	public override function run():Void
 	{
-		AndroidHelper.run(project.meta.packageName + "/" + project.meta.packageName + ".MainActivity", deviceID);
+		var launchActivity = project.config.getString("android.launch-activity");
+		var componentName = project.meta.packageName + "/" + project.meta.packageName + ".MainActivity";
+
+		if (launchActivity != null && launchActivity != "")
+		{
+			componentName = normalizeActivityComponent(launchActivity);
+		}
+
+		AndroidHelper.run(componentName, deviceID);
+	}
+
+	private function normalizeActivityComponent(activityName:String):String
+	{
+		activityName = StringTools.trim(activityName);
+
+		if (activityName.indexOf("/") > -1)
+		{
+			return activityName;
+		}
+
+		if (StringTools.startsWith(activityName, "."))
+		{
+			return project.meta.packageName + "/" + project.meta.packageName + activityName;
+		}
+
+		return project.meta.packageName + "/" + activityName;
 	}
 
 	public override function trace():Void
@@ -766,7 +791,8 @@ class AndroidPlatform extends PlatformTarget
 				&& FileSystem.exists(dependency.path)
 				&& FileSystem.isDirectory(dependency.path)
 				&& (FileSystem.exists(Path.combine(dependency.path, "project.properties"))
-					|| FileSystem.exists(Path.combine(dependency.path, "build.gradle"))))
+					|| FileSystem.exists(Path.combine(dependency.path, "build.gradle"))
+					|| FileSystem.exists(Path.combine(dependency.path, "build.gradle.kts"))))
 			{
 				var name = dependency.name;
 				if (name == "") name = "project" + index;
@@ -849,9 +875,11 @@ class AndroidPlatform extends PlatformTarget
 
 		for (library in cast(context.ANDROID_LIBRARY_PROJECTS, Array<Dynamic>))
 		{
+			cleanLegacyAndroidGradleFile(destination + "/deps/" + library.name + "/build.gradle", Path.combine(library.source, "build.gradle.kts"));
 			System.recursiveCopy(library.source, destination + "/deps/" + library.name, context, true);
 		}
 
+		cleanLegacyAndroidGradleFiles(destination, context);
 		ProjectHelper.recursiveSmartCopyTemplate(project, "android/template", destination, context);
 		System.copyFileTemplate(project.templatePaths, "android/MainActivity.java", packageDirectory + "/MainActivity.java", context);
 		ProjectHelper.recursiveSmartCopyTemplate(project, "haxe", targetDirectory + "/haxe", context);
@@ -865,6 +893,44 @@ class AndroidPlatform extends PlatformTarget
 				System.mkdir(Path.directory(targetPath));
 				AssetHelper.copyAsset(asset, targetPath, context);
 			}
+		}
+	}
+
+	private function cleanLegacyAndroidGradleFiles(destination:String, context:Dynamic):Void
+	{
+		var templateBuildGradleKts = System.findTemplate(project.templatePaths, "android/template/build.gradle.kts", true);
+		if (templateBuildGradleKts == null || templateBuildGradleKts == "" || !FileSystem.exists(templateBuildGradleKts))
+			return;
+
+		cleanLegacyAndroidGradleFile(Path.combine(destination, "settings.gradle"), System.findTemplate(project.templatePaths, "android/template/settings.gradle.kts", true));
+		cleanLegacyAndroidGradleFile(Path.combine(destination, "build.gradle"), templateBuildGradleKts);
+		cleanLegacyAndroidGradleFile(Path.combine(destination, "app/build.gradle"), System.findTemplate(project.templatePaths, "android/template/app/build.gradle.kts", true));
+		cleanStaleAndroidLibraryProjects(destination, context);
+	}
+
+	private function cleanLegacyAndroidGradleFile(path:String, replacement:String):Void
+	{
+		if (replacement != null && replacement != "" && FileSystem.exists(replacement) && FileSystem.exists(path))
+			FileSystem.deleteFile(path);
+	}
+
+	private function cleanStaleAndroidLibraryProjects(destination:String, context:Dynamic):Void
+	{
+		var depsPath = Path.combine(destination, "deps");
+		if (!FileSystem.exists(depsPath) || !FileSystem.isDirectory(depsPath))
+			return;
+
+		var activeLibraries = new Map<String, Bool>();
+		for (library in cast(context.ANDROID_LIBRARY_PROJECTS, Array<Dynamic>))
+		{
+			activeLibraries.set(library.name, true);
+		}
+
+		for (entry in FileSystem.readDirectory(depsPath))
+		{
+			var path = Path.combine(depsPath, entry);
+			if (FileSystem.isDirectory(path) && !activeLibraries.exists(entry))
+				System.removeDirectory(path);
 		}
 	}
 

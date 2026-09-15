@@ -62,6 +62,14 @@ class Tools
 	}
 
 	/**
+	 * Finishes the current Android activity.
+	 */
+	public static inline function finishActivity():Void
+	{
+		JNICache.createStaticMethod('org/haxe/extension/Tools', 'finishActivity', '()V')();
+	}
+
+	/**
 	 * Shows an alert dialog with optional positive and negative buttons.
 	 *
 	 * @param title The title of the alert dialog.

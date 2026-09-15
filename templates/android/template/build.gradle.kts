@@ -1,5 +1,7 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
+import org.gradle.api.tasks.compile.JavaCompile
+
 buildscript {
 	repositories {
 		mavenCentral()
@@ -20,6 +22,30 @@ allprojects {
 		google()
 	}::if ANDROID_GRADLE_BUILD_DIRECTORY::
 	layout.buildDirectory.set(File("::ANDROID_GRADLE_BUILD_DIRECTORY::/::APP_FILE::/${project.name}"))::end::
+}
+
+subprojects {
+	tasks.withType<JavaCompile>().configureEach {
+		options.compilerArgs.add("-Xlint:-options")
+	}
+
+	plugins.withId("com.android.application") {
+		extensions.configure<com.android.build.gradle.BaseExtension>("android") {
+			compileOptions {
+				sourceCompatibility = JavaVersion.VERSION_17
+				targetCompatibility = JavaVersion.VERSION_17
+			}
+		}
+	}
+
+	plugins.withId("com.android.library") {
+		extensions.configure<com.android.build.gradle.BaseExtension>("android") {
+			compileOptions {
+				sourceCompatibility = JavaVersion.VERSION_17
+				targetCompatibility = JavaVersion.VERSION_17
+			}
+		}
+	}
 }
 
 tasks.register<Delete>("clean") {
