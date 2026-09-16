@@ -6,6 +6,7 @@ import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 ::if (ANDROID_USE_ANDROIDX)::
@@ -50,6 +51,8 @@ import java.util.List;
 
 public class GameActivity extends SDLActivity {
 
+
+	private static final String FORCE_LANDSCAPE_EXTRA = "org.haxe.lime.forceLandscapeBeforeSdl";
 
 	private static AudioManager audioManager;
 	private static AudioFocusRequest audioFocusRequest;
@@ -320,6 +323,12 @@ public class GameActivity extends SDLActivity {
 	protected void onCreate (Bundle state) {
 
 		LimeCrashHandler.install (this);
+
+		if (getIntent ().getBooleanExtra (FORCE_LANDSCAPE_EXTRA, false)) {
+
+			setRequestedOrientation (ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+
+		}
 
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
 
