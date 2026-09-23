@@ -74,22 +74,19 @@ object LimeCrashHandler {
 	@Volatile
 	private var installed = false
 
+	@Volatile
+	private var crashContext: Context? = null
+
 	@JvmStatic
 	fun install(activity: Activity) {
+		val appContext = activity.applicationContext
+		crashContext = appContext
 		if (installed) return
 		installed = true
 
-		val appContext = activity.applicationContext
 		Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
 			try {
-				val crashFile = File(appContext.cacheDir, CRASH_FILE)
-				crashFile.writeText(buildReport(appContext, thread, throwable).take(MAX_REPORT_CHARS))
-
-				val intent = Intent(appContext, LimeCrashActivity::class.java)
-					.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-					.putExtra(EXTRA_CRASH_FILE, crashFile.absolutePath)
-
-				appContext.startActivity(intent)
+				launchCrashActivity(appContext, buildReport(appContext, thread, throwable))
 			} catch (handlerError: Throwable) {
 				Log.e(TAG, "Crash recovery activity could not be launched.", handlerError)
 			} finally {
@@ -97,6 +94,36 @@ object LimeCrashHandler {
 				exitProcess(10)
 			}
 		}
+	}
+
+	@JvmStatic
+	fun showHaxeCrash(title: String?, report: String?) {
+		val context = crashContext ?: return
+		val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS Z", Locale.US).format(Date())
+		val formattedReport = buildString {
+			appendLine("Time: $timestamp")
+			appendLine("Package: ${context.packageName}")
+			appendLine("Source: Haxe crash handler")
+			if (!title.isNullOrBlank()) appendLine("Title: $title")
+			appendLine()
+			appendLine(report ?: "No Haxe crash report was provided.")
+		}
+		runCatching {
+			launchCrashActivity(context, formattedReport)
+		}.onFailure { handlerError ->
+			Log.e(TAG, "Haxe crash recovery activity could not be launched.", handlerError)
+		}
+	}
+
+	private fun launchCrashActivity(context: Context, report: String) {
+		val crashFile = File(context.cacheDir, CRASH_FILE)
+		crashFile.writeText(report.take(MAX_REPORT_CHARS))
+
+		val intent = Intent(context, LimeCrashActivity::class.java)
+			.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+			.putExtra(EXTRA_CRASH_FILE, crashFile.absolutePath)
+
+		context.startActivity(intent)
 	}
 
 	private fun buildReport(context: Context, thread: Thread, throwable: Throwable): String {
