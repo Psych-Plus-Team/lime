@@ -25,13 +25,17 @@ namespace lime {
 			if (inputFrames < 0 || outputFrames < 0) return false;
 			if (input.length < inputFrames * channels * 2 || output.length < outputFrames * channels * 2) return false;
 
-			inputPlanar.assign (channels, std::vector<float> (inputFrames));
-			outputPlanar.assign (channels, std::vector<float> (outputFrames));
+			// Keep the channel buffers alive between stream refills. assign() rebuilt
+			// every nested vector for each audio block and caused avoidable allocator churn.
+			inputPlanar.resize (channels);
+			outputPlanar.resize (channels);
 			inputPointers.resize (channels);
 			outputPointers.resize (channels);
 
 			const int16_t* source = reinterpret_cast<const int16_t*> (input.b);
 			for (int channel = 0; channel < channels; ++channel) {
+				inputPlanar[channel].resize (inputFrames);
+				outputPlanar[channel].resize (outputFrames);
 				inputPointers[channel] = inputPlanar[channel].data ();
 				outputPointers[channel] = outputPlanar[channel].data ();
 				for (int frame = 0; frame < inputFrames; ++frame) {

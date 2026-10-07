@@ -296,11 +296,6 @@ namespace lime {
 				}
 
 				OpenGLBindings::Init ();
-				printf ("OpenGL context: %s | GLSL: %s | Renderer: %s\n",
-					(const char*)glGetString (GL_VERSION),
-					(const char*)glGetString (GL_SHADING_LANGUAGE_VERSION),
-					(const char*)glGetString (GL_RENDERER));
-				fflush (stdout);
 
 				#ifndef LIME_GLES
 

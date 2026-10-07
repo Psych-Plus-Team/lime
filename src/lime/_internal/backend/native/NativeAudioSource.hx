@@ -450,17 +450,25 @@ class NativeAudioSource
 			if (stream)
 			{
 				AudioDeviceLock.acquire();
-				AL.sourceStop(handle);
-				#if (cpp && !cppia)
-				if (stretchHandle != null) NativeCFFI.lime_audio_stretch_reset(stretchHandle);
-				#end
-				stretchRemainder = 0;
+				try
+				{
+					AL.sourceStop(handle);
+					#if (cpp && !cppia)
+					if (stretchHandle != null) NativeCFFI.lime_audio_stretch_reset(stretchHandle);
+					#end
+					stretchRemainder = 0;
 
-				parent.buffer.__srcVorbisFile.timeSeek((value + parent.offset) / 1000);
-				AL.sourceUnqueueBuffers(handle, STREAM_NUM_BUFFERS);
-				refillBuffersUnlocked(buffers);
+					parent.buffer.__srcVorbisFile.timeSeek((value + parent.offset) / 1000);
+					AL.sourceUnqueueBuffers(handle, STREAM_NUM_BUFFERS);
+					refillBuffersUnlocked(buffers);
 
-				if (playing) AL.sourcePlay(handle);
+					if (playing) AL.sourcePlay(handle);
+				}
+				catch (error:Dynamic)
+				{
+					AudioDeviceLock.release();
+					throw error;
+				}
 				AudioDeviceLock.release();
 			}
 			else if (parent.buffer != null)
