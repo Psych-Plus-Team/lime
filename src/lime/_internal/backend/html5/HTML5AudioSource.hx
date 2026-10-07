@@ -221,6 +221,16 @@ class HTML5AudioSource
 		
 		return getPitch();
 	}
+
+	public function getTempo():Float
+	{
+		return getPitch();
+	}
+
+	public function setTempo(value:Float):Float
+	{
+		return setPitch(value);
+	}
 	
 
 	public function getPosition():Vector4

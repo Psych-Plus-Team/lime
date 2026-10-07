@@ -74,6 +74,9 @@ class NativeCFFI
 	@:cffi private static function lime_audio_load_bytes(data:Dynamic, buffer:Dynamic):Dynamic;
 
 	@:cffi private static function lime_audio_load_file(path:Dynamic, buffer:Dynamic):Dynamic;
+	@:cffi private static function lime_audio_stretch_create(channels:Int, sampleRate:Int):CFFIPointer;
+	@:cffi private static function lime_audio_stretch_process(handle:CFFIPointer, input:Dynamic, output:Dynamic, inputFrames:Int, outputFrames:Int):Bool;
+	@:cffi private static function lime_audio_stretch_reset(handle:CFFIPointer):Void;
 
 	@:cffi private static function lime_bytes_from_data_pointer(data:Float, length:Int, bytes:Dynamic):Dynamic;
 
@@ -383,6 +386,9 @@ class NativeCFFI
 		"ooo", false));
 	private static var lime_audio_load_file = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_audio_load_file", "ooo",
 		false));
+	private static var lime_audio_stretch_create = new cpp.Callable<Int->Int->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_audio_stretch_create", "iio", false));
+	private static var lime_audio_stretch_process = new cpp.Callable<cpp.Object->cpp.Object->cpp.Object->Int->Int->Bool>(cpp.Prime._loadPrime("lime", "lime_audio_stretch_process", "oooiib", false));
+	private static var lime_audio_stretch_reset = new cpp.Callable<cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_audio_stretch_reset", "ov", false));
 	private static var lime_bytes_from_data_pointer = new cpp.Callable<Float->Int->cpp.Object->cpp.Object>(cpp.Prime._loadPrime("lime",
 		"lime_bytes_from_data_pointer", "dioo", false));
 	private static var lime_bytes_get_data_pointer = new cpp.Callable<cpp.Object->Float>(cpp.Prime._loadPrime("lime", "lime_bytes_get_data_pointer", "od",
@@ -650,6 +656,9 @@ class NativeCFFI
 	private static var lime_audio_load = CFFI.load("lime", "lime_audio_load", 2);
 	private static var lime_audio_load_bytes = CFFI.load("lime", "lime_audio_load_bytes", 2);
 	private static var lime_audio_load_file = CFFI.load("lime", "lime_audio_load_file", 2);
+	private static var lime_audio_stretch_create = CFFI.load("lime", "lime_audio_stretch_create", 2);
+	private static var lime_audio_stretch_process = CFFI.load("lime", "lime_audio_stretch_process", 5);
+	private static var lime_audio_stretch_reset = CFFI.load("lime", "lime_audio_stretch_reset", 1);
 	private static var lime_bytes_from_data_pointer = CFFI.load("lime", "lime_bytes_from_data_pointer", 3);
 	private static var lime_bytes_get_data_pointer = CFFI.load("lime", "lime_bytes_get_data_pointer", 1);
 	private static var lime_bytes_get_data_pointer_offset = CFFI.load("lime", "lime_bytes_get_data_pointer_offset", 2);
@@ -1685,6 +1694,7 @@ class NativeCFFI
 	@:cffi private static function lime_alc_process_context(context:CFFIPointer):Void;
 
 	@:cffi private static function lime_alc_resume_device(device:CFFIPointer):Void;
+	@:cffi private static function lime_alc_reopen_device(device:CFFIPointer):Bool;
 
 	@:cffi private static function lime_alc_suspend_context(context:CFFIPointer):Void;
 
@@ -1853,6 +1863,7 @@ class NativeCFFI
 	private static var lime_alc_process_context = new cpp.Callable<cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_alc_process_context", "ov",
 		false));
 	private static var lime_alc_resume_device = new cpp.Callable<cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_alc_resume_device", "ov", false));
+	private static var lime_alc_reopen_device = new cpp.Callable<cpp.Object->Bool>(cpp.Prime._loadPrime("lime", "lime_alc_reopen_device", "ob", false));
 	private static var lime_alc_suspend_context = new cpp.Callable<cpp.Object->cpp.Void>(cpp.Prime._loadPrime("lime", "lime_alc_suspend_context", "ov",
 		false));
 	private static var lime_al_gen_filter = new cpp.Callable<Void->cpp.Object>(cpp.Prime._loadPrime("lime", "lime_al_gen_filter", "o", false));
@@ -1974,6 +1985,7 @@ class NativeCFFI
 	private static var lime_alc_pause_device = CFFI.load("lime", "lime_alc_pause_device", 1);
 	private static var lime_alc_process_context = CFFI.load("lime", "lime_alc_process_context", 1);
 	private static var lime_alc_resume_device = CFFI.load("lime", "lime_alc_resume_device", 1);
+	private static var lime_alc_reopen_device = CFFI.load("lime", "lime_alc_reopen_device", 1);
 	private static var lime_alc_suspend_context = CFFI.load("lime", "lime_alc_suspend_context", 1);
 	private static var lime_al_gen_filter = CFFI.load("lime", "lime_al_gen_filter", 0);
 	private static var lime_al_filteri = CFFI.load("lime", "lime_al_filteri", 3);

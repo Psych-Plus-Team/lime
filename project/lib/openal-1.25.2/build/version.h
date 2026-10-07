@@ -1,0 +1,7 @@
+#pragma once
+
+#define ALSOFT_VERSION "1.25.2"
+#define ALSOFT_VERSION_NUM 1,25,2,0
+#define ALSOFT_GIT_BRANCH "1.25.2"
+#define ALSOFT_GIT_COMMIT_HASH "b2c48f7"
+

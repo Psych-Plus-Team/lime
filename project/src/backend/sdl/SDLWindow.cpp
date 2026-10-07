@@ -89,6 +89,19 @@ namespace lime {
 
 			sdlWindowFlags |= SDL_WINDOW_OPENGL;
 
+			// Ask desktop drivers for the newest standardized OpenGL context first.
+			// The compatibility profile keeps OpenFL's existing shader pipeline valid,
+			// while Android tries the newest OpenGL ES standard before safe fallbacks.
+			#if (defined(HX_WINDOWS) || defined(HX_LINUX)) && !defined(NATIVE_TOOLKIT_SDL_ANGLE)
+			SDL_GL_SetAttribute (SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
+			SDL_GL_SetAttribute (SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+			SDL_GL_SetAttribute (SDL_GL_CONTEXT_MINOR_VERSION, 6);
+			#elif defined(ANDROID)
+			SDL_GL_SetAttribute (SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+			SDL_GL_SetAttribute (SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+			SDL_GL_SetAttribute (SDL_GL_CONTEXT_MINOR_VERSION, 2);
+			#endif
+
 			if (flags & WINDOW_FLAG_ALLOW_HIGHDPI) {
 
 				sdlWindowFlags |= SDL_WINDOW_ALLOW_HIGHDPI;
@@ -116,7 +129,7 @@ namespace lime {
 
 			if (flags & WINDOW_FLAG_DEPTH_BUFFER) {
 
-				SDL_GL_SetAttribute (SDL_GL_DEPTH_SIZE, 32 - (flags & WINDOW_FLAG_STENCIL_BUFFER) ? 8 : 0);
+				SDL_GL_SetAttribute (SDL_GL_DEPTH_SIZE, (flags & WINDOW_FLAG_STENCIL_BUFFER) ? 24 : 32);
 
 			}
 
@@ -225,6 +238,51 @@ namespace lime {
 
 			context = SDL_GL_CreateContext (sdlWindow);
 
+			#if (defined(HX_WINDOWS) || defined(HX_LINUX)) && !defined(NATIVE_TOOLKIT_SDL_ANGLE)
+			// Not every desktop driver exposes 4.6. Keep a deterministic ladder so
+			// capable PCs get the latest context without excluding older hardware.
+			if (!context) {
+				SDL_GL_SetAttribute (SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+				SDL_GL_SetAttribute (SDL_GL_CONTEXT_MINOR_VERSION, 5);
+				context = SDL_GL_CreateContext (sdlWindow);
+			}
+			if (!context) {
+				SDL_GL_SetAttribute (SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+				SDL_GL_SetAttribute (SDL_GL_CONTEXT_MINOR_VERSION, 1);
+				context = SDL_GL_CreateContext (sdlWindow);
+			}
+			if (!context) {
+				SDL_GL_SetAttribute (SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+				SDL_GL_SetAttribute (SDL_GL_CONTEXT_MINOR_VERSION, 3);
+				context = SDL_GL_CreateContext (sdlWindow);
+			}
+			if (!context) {
+				SDL_GL_SetAttribute (SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
+				SDL_GL_SetAttribute (SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+				SDL_GL_SetAttribute (SDL_GL_CONTEXT_MINOR_VERSION, 1);
+				context = SDL_GL_CreateContext (sdlWindow);
+			}
+			#elif defined(ANDROID)
+			if (!context) {
+				SDL_GL_SetAttribute (SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+				SDL_GL_SetAttribute (SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+				SDL_GL_SetAttribute (SDL_GL_CONTEXT_MINOR_VERSION, 1);
+				context = SDL_GL_CreateContext (sdlWindow);
+			}
+			if (!context) {
+				SDL_GL_SetAttribute (SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+				SDL_GL_SetAttribute (SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+				SDL_GL_SetAttribute (SDL_GL_CONTEXT_MINOR_VERSION, 0);
+				context = SDL_GL_CreateContext (sdlWindow);
+			}
+			if (!context) {
+				SDL_GL_SetAttribute (SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+				SDL_GL_SetAttribute (SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+				SDL_GL_SetAttribute (SDL_GL_CONTEXT_MINOR_VERSION, 0);
+				context = SDL_GL_CreateContext (sdlWindow);
+			}
+			#endif
+
 			if (context && SDL_GL_MakeCurrent (sdlWindow, context) == 0) {
 
 				if (flags & WINDOW_FLAG_VSYNC) {
@@ -238,6 +296,11 @@ namespace lime {
 				}
 
 				OpenGLBindings::Init ();
+				printf ("OpenGL context: %s | GLSL: %s | Renderer: %s\n",
+					(const char*)glGetString (GL_VERSION),
+					(const char*)glGetString (GL_SHADING_LANGUAGE_VERSION),
+					(const char*)glGetString (GL_RENDERER));
+				fflush (stdout);
 
 				#ifndef LIME_GLES
 

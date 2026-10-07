@@ -93,6 +93,7 @@
 		<dependency path="dependencies/angle/d3dcompiler_47.dll" if="windows angle" unless="static_link" />
 		<dependency path="dependencies/angle/libegl.dll" if="windows angle" unless="static_link" />
 		<dependency path="dependencies/angle/libglesv2.dll" if="windows angle" unless="static_link" />
+		<dependency path="dependencies/openal-soft/Win64/OpenAL32.dll" if="windows" unless="static_link" />
 
 		<!-- TODO: Move to template or move all template dependencies to XML? -->
 		<!-- <dependency name="CoreBluetooth.framework" if="ios" /> -->

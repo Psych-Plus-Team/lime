@@ -9,6 +9,7 @@ import lime.media.openal.ALSource;
 import lime.media.vorbis.VorbisFile;
 import lime.media.AudioManager;
 import lime.media.AudioSource;
+import lime.system.CFFIPointer;
 import lime.utils.UInt8Array;
 
 #if !lime_debug
@@ -16,6 +17,7 @@ import lime.utils.UInt8Array;
 @:noDebug
 #end
 @:access(lime.media.AudioBuffer)
+@:access(lime._internal.backend.native.NativeCFFI)
 class NativeAudioSource
 {
 	private static var STREAM_BUFFER_SIZE = 48000;
@@ -40,6 +42,9 @@ class NativeAudioSource
 	private var samples:Int;
 	private var stream:Bool;
 	private var streamTimer:Timer;
+	private var stretchHandle:CFFIPointer;
+	private var stretchRemainder:Float = 0;
+	private var tempo:Float = 1;
 	private var timer:Timer;
 
 	public function new(parent:AudioSource)
@@ -66,6 +71,7 @@ class NativeAudioSource
 			}
 			handle = null;
 		}
+		stretchHandle = null;
 	}
 
 	public function init():Void
@@ -113,6 +119,10 @@ class NativeAudioSource
 			}
 
 			handle = AL.createSource();
+			#if (cpp && !cppia)
+			if (parent.buffer.bitsPerSample == 16)
+				stretchHandle = NativeCFFI.lime_audio_stretch_create(parent.buffer.channels, parent.buffer.sampleRate);
+			#end
 		}
 		else
 		{
@@ -248,7 +258,42 @@ class NativeAudioSource
 		#end
 	}
 
+	private function readStretchedVorbisFileBuffer(vorbisFile:VorbisFile, outputLength:Int):UInt8Array
+	{
+		#if (lime_vorbis && cpp && !cppia)
+		if (stretchHandle != null && tempo != 1 && parent.buffer.bitsPerSample == 16)
+		{
+			var bytesPerFrame = parent.buffer.channels * 2;
+			var outputFrames = Std.int(outputLength / bytesPerFrame);
+			var exactInputFrames = outputFrames * tempo + stretchRemainder;
+			var inputFrames = Std.int(exactInputFrames);
+			stretchRemainder = exactInputFrames - inputFrames;
+			var input = readVorbisFileBuffer(vorbisFile, inputFrames * bytesPerFrame);
+			var output = new UInt8Array(outputFrames * bytesPerFrame);
+
+			if (NativeCFFI.lime_audio_stretch_process(stretchHandle, input.buffer, output.buffer, inputFrames, outputFrames))
+				return output;
+		}
+		#end
+		return readVorbisFileBuffer(vorbisFile, outputLength);
+	}
+
 	private function refillBuffers(buffers:Array<ALBuffer> = null):Void
+	{
+		AudioDeviceLock.acquire();
+		try
+		{
+			refillBuffersUnlocked(buffers);
+		}
+		catch (error:Dynamic)
+		{
+			AudioDeviceLock.release();
+			throw error;
+		}
+		AudioDeviceLock.release();
+	}
+
+	private function refillBuffersUnlocked(buffers:Array<ALBuffer> = null):Void
 	{
 		#if lime_vorbis
 		var vorbisFile = null;
@@ -261,7 +306,7 @@ class NativeAudioSource
 			if (buffersProcessed > 0)
 			{
 				vorbisFile = parent.buffer.__srcVorbisFile;
-				position = Int64.toInt(vorbisFile.pcmTell());
+				position = Int64.toInt(vorbisFile.pcmTell()) * parent.buffer.channels * Std.int(parent.buffer.bitsPerSample / 8);
 
 				if (position < dataLength)
 				{
@@ -275,28 +320,28 @@ class NativeAudioSource
 			if (vorbisFile == null)
 			{
 				vorbisFile = parent.buffer.__srcVorbisFile;
-				position = Int64.toInt(vorbisFile.pcmTell());
+				position = Int64.toInt(vorbisFile.pcmTell()) * parent.buffer.channels * Std.int(parent.buffer.bitsPerSample / 8);
 			}
 
 			var numBuffers = 0;
 			var data;
 
+			var bytesPerFrame = parent.buffer.channels * Std.int(parent.buffer.bitsPerSample / 8);
 			for (buffer in buffers)
 			{
-				if (dataLength - position >= STREAM_BUFFER_SIZE)
+				position = Int64.toInt(vorbisFile.pcmTell()) * bytesPerFrame;
+				var remaining = dataLength - position;
+				if (remaining <= 0) break;
+
+				var outputLength = Std.int(Math.min(STREAM_BUFFER_SIZE, remaining));
+				if (tempo != 1)
 				{
-					data = readVorbisFileBuffer(vorbisFile, STREAM_BUFFER_SIZE);
-					AL.bufferData(buffer, format, data, data.length, parent.buffer.sampleRate);
-					position += STREAM_BUFFER_SIZE;
-					numBuffers++;
+					var remainingFrames = Std.int(remaining / bytesPerFrame);
+					outputLength = Std.int(Math.min(STREAM_BUFFER_SIZE / bytesPerFrame, Math.max(1, Math.floor(remainingFrames / tempo)))) * bytesPerFrame;
 				}
-				else if (position < dataLength)
-				{
-					data = readVorbisFileBuffer(vorbisFile, dataLength - position);
-					AL.bufferData(buffer, format, data, data.length, parent.buffer.sampleRate);
-					numBuffers++;
-					break;
-				}
+				data = readStretchedVorbisFileBuffer(vorbisFile, outputLength);
+				AL.bufferData(buffer, format, data, data.length, parent.buffer.sampleRate);
+				numBuffers++;
 			}
 
 			AL.sourceQueueBuffers(handle, numBuffers, buffers);
@@ -371,7 +416,7 @@ class NativeAudioSource
 		{
 			if (stream)
 			{
-				var time = (Std.int(bufferTimeBlocks[0] * 1000) + Std.int(AL.getSourcef(handle, AL.SEC_OFFSET) * 1000)) - parent.offset;
+				var time = (Std.int(bufferTimeBlocks[0] * 1000) + Std.int(AL.getSourcef(handle, AL.SEC_OFFSET) * 1000 * tempo)) - parent.offset;
 				if (time < 0) return 0;
 				return time;
 			}
@@ -404,13 +449,19 @@ class NativeAudioSource
 		{
 			if (stream)
 			{
+				AudioDeviceLock.acquire();
 				AL.sourceStop(handle);
+				#if (cpp && !cppia)
+				if (stretchHandle != null) NativeCFFI.lime_audio_stretch_reset(stretchHandle);
+				#end
+				stretchRemainder = 0;
 
 				parent.buffer.__srcVorbisFile.timeSeek((value + parent.offset) / 1000);
 				AL.sourceUnqueueBuffers(handle, STREAM_NUM_BUFFERS);
-				refillBuffers(buffers);
+				refillBuffersUnlocked(buffers);
 
 				if (playing) AL.sourcePlay(handle);
+				AudioDeviceLock.release();
 			}
 			else if (parent.buffer != null)
 			{
@@ -439,7 +490,7 @@ class NativeAudioSource
 				timer.stop();
 			}
 
-			var timeRemaining = Std.int((getLength() - value) / getPitch());
+			var timeRemaining = Std.int((getLength() - value) / (getPitch() * tempo));
 
 			if (timeRemaining > 0)
 			{
@@ -479,6 +530,22 @@ class NativeAudioSource
 		return value;
 	}
 
+	public function getTempo():Float
+	{
+		return tempo;
+	}
+
+	public function setTempo(value:Float):Float
+	{
+		if (!Math.isFinite(value) || value <= 0) value = 1;
+		if (tempo == value) return value;
+
+		var current = getCurrentTime();
+		tempo = value;
+		if (stream && handle != null) setCurrentTime(current);
+		return tempo;
+	}
+
 	public function getLength():Int
 	{
 		if (length != null)
@@ -498,7 +565,7 @@ class NativeAudioSource
 				timer.stop();
 			}
 
-			var timeRemaining = Std.int((value - getCurrentTime()) / getPitch());
+			var timeRemaining = Std.int((value - getCurrentTime()) / (getPitch() * tempo));
 
 			if (timeRemaining > 0)
 			{

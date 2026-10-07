@@ -189,6 +189,7 @@ class OpenALAudioContext
 		AL.dopplerFactor(value);
 	}
 
+	@:deprecated("OpenAL deprecated dopplerVelocity; use speedOfSound to configure Doppler scaling")
 	public function dopplerVelocity(value:Float):Void
 	{
 		AL.dopplerVelocity(value);

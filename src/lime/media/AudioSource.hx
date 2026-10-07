@@ -18,6 +18,8 @@ class AudioSource
 	public var length(get, set):Int;
 	public var loops(get, set):Int;
 	public var pitch(get, set):Float;
+	/** Playback speed independent from pitch on native streamed audio. */
+	public var tempo(get, set):Float;
 	public var offset:Int;
 	public var position(get, set):Vector4;
 
@@ -117,6 +119,16 @@ class AudioSource
 	@:noCompletion private function set_pitch(value:Float):Float
 	{
 		return __backend.setPitch(value);
+	}
+
+	@:noCompletion private function get_tempo():Float
+	{
+		return __backend.getTempo();
+	}
+
+	@:noCompletion private function set_tempo(value:Float):Float
+	{
+		return __backend.setTempo(value);
 	}
 
 	@:noCompletion private function get_position():Vector4

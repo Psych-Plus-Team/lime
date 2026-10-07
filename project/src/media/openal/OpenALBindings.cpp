@@ -36,6 +36,45 @@ namespace lime {
 
 
 	#ifdef LIME_OPENALSOFT
+	void lime_alc_device_pause (ALCdevice* device) {
+
+		#ifdef LIME_OPENALSOFT_DYNAMIC
+		LPALCDEVICEPAUSESOFT pauseDevice = (LPALCDEVICEPAUSESOFT)alcGetProcAddress (device, "alcDevicePauseSOFT");
+		if (pauseDevice) pauseDevice (device);
+		#else
+		alcDevicePauseSOFT (device);
+		#endif
+
+	}
+
+
+	void lime_alc_device_resume (ALCdevice* device) {
+
+		#ifdef LIME_OPENALSOFT_DYNAMIC
+		LPALCDEVICERESUMESOFT resumeDevice = (LPALCDEVICERESUMESOFT)alcGetProcAddress (device, "alcDeviceResumeSOFT");
+		if (resumeDevice) resumeDevice (device);
+		#else
+		alcDeviceResumeSOFT (device);
+		#endif
+
+	}
+
+
+	bool lime_alc_device_reopen (ALCdevice* device) {
+
+		if (!device || !alcIsExtensionPresent (device, "ALC_SOFT_reopen_device")) return false;
+		#ifdef LIME_OPENALSOFT_DYNAMIC
+		LPALCREOPENDEVICESOFT reopenDevice = (LPALCREOPENDEVICESOFT)alcGetProcAddress (device, "alcReopenDeviceSOFT");
+		return reopenDevice && reopenDevice (device, NULL, NULL) == ALC_TRUE;
+		#else
+		return alcReopenDeviceSOFT (device, NULL, NULL) == ALC_TRUE;
+		#endif
+
+	}
+	#endif
+
+
+	#ifdef LIME_OPENALSOFT
 	void lime_al_delete_auxiliary_effect_slot (value aux);
 	HL_PRIM void HL_NAME(hl_al_delete_auxiliary_effect_slot) (HL_CFFIPointer* aux);
 	#endif
@@ -3437,7 +3476,7 @@ namespace lime {
 
 		#ifdef LIME_OPENALSOFT
 		ALCdevice* alcDevice = (ALCdevice*)val_data (device);
-		alcDevicePauseSOFT (alcDevice);
+		lime_alc_device_pause (alcDevice);
 		#endif
 
 	}
@@ -3447,7 +3486,7 @@ namespace lime {
 
 		#ifdef LIME_OPENALSOFT
 		ALCdevice* alcDevice = (ALCdevice*)device->ptr;
-		alcDevicePauseSOFT (alcDevice);
+		lime_alc_device_pause (alcDevice);
 		#endif
 
 	}
@@ -3473,7 +3512,19 @@ namespace lime {
 
 		#ifdef LIME_OPENALSOFT
 		ALCdevice* alcDevice = (ALCdevice*)val_data (device);
-		alcDeviceResumeSOFT (alcDevice);
+		lime_alc_device_resume (alcDevice);
+		#endif
+
+	}
+
+
+	bool lime_alc_reopen_device (value device) {
+
+		#ifdef LIME_OPENALSOFT
+		ALCdevice* alcDevice = device ? (ALCdevice*)val_data (device) : NULL;
+		return lime_alc_device_reopen (alcDevice);
+		#else
+		return false;
 		#endif
 
 	}
@@ -3483,7 +3534,7 @@ namespace lime {
 
 		#ifdef LIME_OPENALSOFT
 		ALCdevice* alcDevice = device ? (ALCdevice*)device->ptr : NULL;
-		alcDeviceResumeSOFT (alcDevice);
+		lime_alc_device_resume (alcDevice);
 		#endif
 
 	}
@@ -3620,6 +3671,7 @@ namespace lime {
 	DEFINE_PRIME1v (lime_alc_pause_device);
 	DEFINE_PRIME1v (lime_alc_process_context);
 	DEFINE_PRIME1v (lime_alc_resume_device);
+	DEFINE_PRIME1 (lime_alc_reopen_device);
 	DEFINE_PRIME1v (lime_alc_suspend_context);
 
 

@@ -22,6 +22,7 @@
 	<!-- <set name="LIME_NEKO" value="1" if="linux" /> -->
 	<set name="LIME_OGG" value="1" />
 	<set name="LIME_OPENALSOFT" value="1" if="windows || linux || mac || android" unless="static_link" />
+	<set name="LIME_OPENALSOFT_DYNAMIC" value="1" if="windows LIME_OPENALSOFT" unless="lime-openalsoft-source" />
 	<set name="LIME_OPENAL" value="1" if="iphone || webassembly || tvos" />
 	<set name="LIME_MOJOAL" value="1" if="switch || static_link || winrt || mojoal" unless="LIME_OPENAL" />
 	<unset name="LIME_OPENALSOFT" if="LIME_MOJOAL" />
@@ -175,15 +176,20 @@
 
 		<section if="LIME_OPENAL">
 
-			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/openal/include/" unless="LIME_MOJOAL || emscripten" />
+			<compilerflag value="-I../dependencies/openal-soft/include/" if="LIME_OPENALSOFT_DYNAMIC" />
+			<compilerflag value="-I../dependencies/signalsmith-stretch/" />
+			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/openal-1.25.2/include/" if="LIME_OPENALSOFT" unless="LIME_OPENALSOFT_DYNAMIC" />
 			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/mojoal/" if="LIME_MOJOAL" />
 			<compilerflag value="-DLIME_OPENAL" />
 			<compilerflag value="-DLIME_OPENALSOFT" if="LIME_OPENALSOFT" />
+			<compilerflag value="-DLIME_OPENALSOFT_DYNAMIC" if="LIME_OPENALSOFT_DYNAMIC" />
 			<compilerflag value="-DLIME_MOJOAL" if="LIME_MOJOAL" />
-			<compilerflag value="-DAL_LIBTYPE_STATIC=1" if="LIME_OPENALSOFT || LIME_MOJOAL" />
+			<compilerflag value="-DAL_LIBTYPE_STATIC=1" if="LIME_MOJOAL" />
+			<compilerflag value="-DAL_LIBTYPE_STATIC=1" if="LIME_OPENALSOFT" unless="LIME_OPENALSOFT_DYNAMIC" />
 			<compilerflag value="-DAL_ALEXT_PROTOTYPES" if="LIME_OPENALSOFT" />
 
 			<file name="src/media/openal/OpenALBindings.cpp" />
+			<file name="src/media/AudioStretchBindings.cpp" />
 
 		</section>
 
@@ -347,6 +353,7 @@
 	<include name="lib/neko/files.xml" />
 	<include name="lib/ogg/files.xml" />
 	<include name="lib/openal/files.xml" />
+	<include name="lib/openal-1.25.2-files.xml" />
 	<include name="lib/pixman/files.xml" />
 	<include name="lib/png/files.xml" />
 	<include name="lib/sdl/files.xml" />
@@ -379,7 +386,7 @@
 		<files id="native-toolkit-mojoal" if="LIME_MOJOAL" />
 		<files id="native-toolkit-neko" if="LIME_NEKO" />
 		<files id="native-toolkit-ogg" if="LIME_OGG" />
-		<files id="native-toolkit-openal" if="LIME_OPENALSOFT" />
+		<files id="native-toolkit-openal-1.25.2" if="LIME_OPENALSOFT" unless="LIME_OPENALSOFT_DYNAMIC" />
 		<files id="native-toolkit-pixman" if="LIME_PIXMAN" />
 		<files id="native-toolkit-png" if="LIME_PNG" />
 		<files id="native-toolkit-sdl" if="LIME_SDL" unless="emscripten" />
@@ -398,7 +405,8 @@
 			<ext value=".hdll" if="LIME_HASHLINK" />
 
 			<section if="windows">
-
+				<lib name="../dependencies/openal-soft/Win64/OpenAL32.lib" if="LIME_OPENALSOFT_DYNAMIC HXCPP_M64" />
+				<lib name="../dependencies/openal-soft/Win32/OpenAL32.lib" if="LIME_OPENALSOFT_DYNAMIC" unless="HXCPP_M64" />
 				<lib name="gdi32.lib" />
 				<lib name="opengl32.lib" />
 				<lib name="user32.lib" />
@@ -414,6 +422,7 @@
 				<lib name="shell32.lib" />
 				<lib name="comdlg32.lib" />
 				<lib name="setupapi.lib" />
+				<lib name="avrt.lib" if="LIME_OPENALSOFT" unless="LIME_OPENALSOFT_DYNAMIC" />
 
 				<lib name="usp10.lib" if="LIME_HARFBUZZ" />
 				<lib name="rpcrt4.lib" if="LIME_HARFBUZZ" />

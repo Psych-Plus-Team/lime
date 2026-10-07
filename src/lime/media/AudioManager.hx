@@ -3,7 +3,6 @@ package lime.media;
 import haxe.Timer;
 import lime._internal.backend.native.NativeCFFI;
 import lime.media.openal.AL;
-import lime.media.openal.ALC;
 import lime.media.openal.ALContext;
 import lime.media.openal.ALDevice;
 #if (js && html5)

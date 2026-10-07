@@ -32,6 +32,7 @@ class ALC
 	public static inline var ENUMERATE_ALL_EXT:Int = 1;
 	public static inline var DEFAULT_ALL_DEVICES_SPECIFIER:Int = 0x1012;
 	public static inline var ALL_DEVICES_SPECIFIER:Int = 0x1013;
+	public static inline var CONNECTED:Int = 0x313;
 
 	public static function closeDevice(device:ALDevice):Bool
 	{
@@ -194,6 +195,16 @@ class ALC
 	{
 		#if (lime_cffi && lime_openal && !macro)
 		NativeCFFI.lime_alc_resume_device(device);
+		#end
+	}
+
+	/** Reopens this device using the current system default without destroying sources. */
+	public static function reopenDevice(device:ALDevice):Bool
+	{
+		#if (cpp && lime_cffi && lime_openal && !macro)
+		return NativeCFFI.lime_alc_reopen_device(device);
+		#else
+		return false;
 		#end
 	}
 

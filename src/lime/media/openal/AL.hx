@@ -453,6 +453,7 @@ class AL
 		#end
 	}
 
+	@:deprecated("OpenAL deprecated dopplerVelocity; use speedOfSound to configure Doppler scaling")
 	public static function dopplerVelocity(value:Float):Void
 	{
 		#if (lime_cffi && lime_openal && !macro)
